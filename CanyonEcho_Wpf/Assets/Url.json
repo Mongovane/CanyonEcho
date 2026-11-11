@@ -1,0 +1,13 @@
+{
+  "env": "prod",
+  "envs": [
+    {
+      "name": "sit",
+      "useApi": "https://localhost:7286"
+    },
+    {
+      "name": "prod",
+      "useApi": "https://api.github.com/repos/Mongovane/CanyonEcho"
+    }
+  ]
+}

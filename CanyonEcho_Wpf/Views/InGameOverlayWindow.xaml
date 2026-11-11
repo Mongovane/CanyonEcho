@@ -1,0 +1,41 @@
+﻿<Window x:Class="CanyonEcho_Wpf.Views.InGameOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CanyonEcho_InGameHUD"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Focusable="False"
+        IsHitTestVisible="False"
+        Width="460"
+        Height="86"
+        Left="18"
+        Top="18"
+        SourceInitialized="Window_SourceInitialized">
+  <Border Background="#BF0A1428"
+          BorderBrush="#FFC8AA6E"
+          BorderThickness="1.2"
+          CornerRadius="6"
+          Padding="10,6">
+    <StackPanel>
+      <DockPanel>
+        <TextBlock Text="⚡ 峡谷回音 HUD" Foreground="#FFC8AA6E" FontWeight="Bold" FontSize="12"/>
+        <TextBlock Text="F2默认 | F3自定义 | F4框选OCR | F5快速OCR | F6阴阳 | F7显隐"
+                   Foreground="#FFA09B8C" FontSize="10.5" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+      </DockPanel>
+      <TextBlock Text="{Binding LastOcrText}"
+                 Foreground="#FFCDFAFA"
+                 FontSize="11"
+                 Margin="0,4,0,0"
+                 TextTrimming="CharacterEllipsis"/>
+      <TextBlock Text="{Binding LastAiReply}"
+                 Foreground="#FF0AC8B9"
+                 FontWeight="SemiBold"
+                 FontSize="12"
+                 Margin="0,2,0,0"
+                 TextTrimming="CharacterEllipsis"/>
+    </StackPanel>
+  </Border>
+</Window>
