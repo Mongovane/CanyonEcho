@@ -37,7 +37,8 @@ namespace CanyonEcho_Wpf.Helper
         PoliteScholar = 1,
         KindPhilanthropist = 2,
         CanyonPoet = 3,
-        Custom = 4
+        Custom = 4,
+        RoastMaster = 5
     }
 
     /// <summary>
@@ -54,11 +55,34 @@ namespace CanyonEcho_Wpf.Helper
             set => SetProperty(ref _EngineMode, value);
         }
 
-        private SnarkyStylePreset _StylePreset = SnarkyStylePreset.GreenTea;
+        private SnarkyStylePreset _StylePreset = SnarkyStylePreset.RoastMaster;
         public SnarkyStylePreset StylePreset
         {
             get => _StylePreset;
             set => SetProperty(ref _StylePreset, value);
+        }
+
+        private bool _UseRoastMode = true;
+        /// <summary>
+        /// 粗口 roast 骂人模式 (默认开, 用户要求): 用中文俚语+大量脏话往死里喷, 不再
+        /// "零脏字"。关掉则回到原来的干净阴阳怪气。开着被举报/禁言/封号的风险自担,
+        /// 详见 README 的 Roast 模式警告。
+        /// </summary>
+        public bool UseRoastMode
+        {
+            get => _UseRoastMode;
+            set => SetProperty(ref _UseRoastMode, value);
+        }
+
+        private bool _UseSwearObfuscation = true;
+        /// <summary>
+        /// 脏话隐形处理 (v4.2.0, 默认开): 发送前用 SwearObfuscator 把原形脏话换成
+        /// 同音/变体字, 并在脏话词内插零宽, 免得被聊天框吞字。关掉就原样发, 硬骂被吞别怪我。
+        /// </summary>
+        public bool UseSwearObfuscation
+        {
+            get => _UseSwearObfuscation;
+            set => SetProperty(ref _UseSwearObfuscation, value);
         }
 
         private string _ApiBaseUrl = "https://api.deepseek.com/v1";
@@ -95,7 +119,7 @@ namespace CanyonEcho_Wpf.Helper
             set => SetProperty(ref _ModelName, value);
         }
 
-        private string _CustomSystemPrompt = "你是一个英雄联盟高情商阴阳怪气大师。请针对以下游戏聊天框中队友或对手发的恶意言论，生成一句简短、犀利、极其阴阳怪气但绝不包含任何脏字或违规敏感词的反击回复。字数严格控制在28字以内，直接输出回复内容，不要加引号或解释。";
+        private string _CustomSystemPrompt = "Based on everything you know about this player, roast and don't hold back. Say it in Chinese slang, with way more Chinese swear words, but disguised so the LoL chat box won't swallow them. 基于你对这个喷子的一切了解往死里喷，别收着，脏话用隐形写法，绝对不要写原形：操->艹，你妈->尼玛，他妈->特么，傻逼->傻B/SB/煞笔，废物->废勿，菜逼->菜B，滚->衮，垃圾->辣鸡，脑瘫->脑摊，脑残->脑蚕，智障->制杖，弱智->若智，白痴->白吃，牛逼->牛福/牛批，狗东西->苟东西，儿子->儿砸/JL子，爹->蝶，叫爹->叫蝶，孙子->孙砸，爸爸->粑粑，老妈->老冯，操你妈->艹尼玛/CNM，去死->去屎，滚蛋->衮蛋，40字以内，只输出喷人的话本身。";
         public string CustomSystemPrompt
         {
             get => _CustomSystemPrompt;
@@ -165,8 +189,47 @@ namespace CanyonEcho_Wpf.Helper
         private int _ChatBoxHeight = 0;
         public int ChatBoxHeight { get => _ChatBoxHeight; set => SetProperty(ref _ChatBoxHeight, value); }
 
+        /// <summary>
+        /// Roast prompt (用户指定, 改编自: "Based on everything you know about me,
+        /// roast and don't hold back. Say it in Chinese slang, but add way more
+        /// Chinese swear words")。游戏里 "me" 换成对面那个喷子: 基于解析器给出的
+        /// 一切了解 (发言人/英雄、意图、原话、战绩、是否帮腔) 往死里喷。
+        /// </summary>
+        public const string RoastSystemPrompt = "你是一个英雄联盟祖安 roast 大师。Based on everything you know about this player, roast and don't hold back. 用中文俚语往死里喷, 一点都别收着, 脏话拉满, 但脏话绝对不要写原形, 否则聊天框会直接吞字, 还可能触发零容忍禁言。脏话必须用隐形写法, 人一眼看懂, 过滤器认不出来: 操->艹, 你妈->尼玛, 他妈->特么/TMD, 傻逼->傻B/SB/煞笔, 傻子->傻砸, 废物->废勿, 菜逼->菜B, 菜鸡->菜吉, 滚->衮, 滚蛋->衮蛋, 垃圾->辣鸡, 脑瘫->脑摊, 脑残->脑蚕, 智障->制杖, 弱智->若智, 白痴->白吃, 牛逼->牛福/牛批, 狗东西->苟东西, 操你妈->艹尼玛/CNM, 去死->去屎, 我操->卧艹/卧槽, 操蛋->艹蛋, 妈蛋->麻蛋, 二逼->二哔, 装逼->装哔, 儿子->儿砸/JL子, 你儿子->你儿砸, 爹->蝶, 叫爹->叫蝶, 我是你爹->我是你蝶, 孙子->孙砸, 龟孙子->龟孙砸, 爸爸->粑粑, 老妈->老冯。儿子主用儿砸, 儿砸也被吞再换 JL子 (儿拆成 J+L 形近)。绝对不要直接写 操你妈/傻逼/他妈的/废物/儿子/爹/智障/牛逼 这些原形。只准喷他的游戏行为 (操作菜、意识差、战绩烂、甩锅、嘴硬、帮腔护短), 不准碰种族/性别/地域/残疾这些跟游戏无关的东西, 不准威胁现实暴力。短促、冷漠、轻蔑, 6~40 字, 句尾不要加句号, 分句用空格代替逗号, 只输出喷人的话本身, 不要加引号或解释。参考范例: 对方说\"打野会不会玩\" -> 输出: 艹尼玛 线上打成全自动提款机 还怪打野没给你交保护费 傻B; 对方说\"？\" -> 输出: 问号敲尼玛呢 连自己刚才那波傻B操作都看不懂了?; 对方说\"垃圾队友15吧\" -> 输出: 战绩跟特么座机号似的 嘴倒是比防御塔还硬 菜B; 有人帮他说话 -> 输出: 哟 这就请上辩护律师了 艹 一个送一个洗 绝配 两个傻B; 对方说\"我是你爹\" -> 输出: 就你这制杖操作 还敢当人蝶呢 儿砸先学会补刀吧; 对方说\"你儿子\" -> 输出: 儿砸别叫了 你这战绩 你蝶看了都想退游戏 傻B。";
+
         public string GetEffectiveSystemPrompt()
         {
+            if (UseRoastMode)
+            {
+                // Custom 人设时尊重用户自己写的提示词 (默认就是上面那段 roast prompt)。
+                if (StylePreset == SnarkyStylePreset.Custom && !string.IsNullOrWhiteSpace(CustomSystemPrompt))
+                {
+                    return CustomSystemPrompt + "\n【去AI味硬性规则】: 绝不许像AI客服或朗诵腔! 模仿真实老玩家随手打字, 短促、冷漠、轻蔑, 句尾不要加句号。";
+                }
+                string styleLine;
+                switch (StylePreset)
+                {
+                    case SnarkyStylePreset.GreenTea:
+                        styleLine = "人设: 绿茶 roast, 茶言茶语里夹着脏话, 气死人不偿命。";
+                        break;
+                    case SnarkyStylePreset.PoliteScholar:
+                        styleLine = "人设: 冷酷高高在上, 像看低分段人机一样骂, 脏话要冷, 不要撒泼。";
+                        break;
+                    case SnarkyStylePreset.KindPhilanthropist:
+                        styleLine = "人设: 云淡风轻, 把对方红温急眼当笑话看, 一句脏话点到痛处就行。";
+                        break;
+                    case SnarkyStylePreset.CanyonPoet:
+                        styleLine = "人设: 祖安文豪, 最损最毒辣的峡谷黑话+脏话, 句句见血。";
+                        break;
+                    case SnarkyStylePreset.RoastMaster:
+                    case SnarkyStylePreset.Custom:
+                    default:
+                        styleLine = "人设: 纯 roast 大师, 不阴阳, 直接开喷, 脏话拉满。";
+                        break;
+                }
+                return RoastSystemPrompt + "\n" + styleLine + "\n【去AI味硬性规则】: 绝不许像AI客服或朗诵腔! 严禁\"哇\"、\"呢\"、\"真让人欣慰\"、\"行为艺术\"、\"哲学层面\"等书面词。模仿真实英雄联盟贴吧/峡谷之巅老玩家随手打字的习惯, 短促、冷漠、轻蔑, 句尾不要加句号。";
+            }
+
             const string antiAiRules = @"
 【去AI味硬性规则】：
 1. 绝不许像AI客服或朗诵腔！严禁使用“哇”、“呢”、“真让人欣慰”、“行为艺术”、“哲学层面”等书面词。
@@ -189,9 +252,16 @@ namespace CanyonEcho_Wpf.Helper
                     return "你正在玩英雄联盟，请把对方的破防当成红温急眼，用云淡风轻的语气让对方更破防（例如：'红温了？打字连标点都哆嗦了'、'汗流浃背了兄弟 先擦擦手上的汗吧'）。" + antiAiRules;
                 case SnarkyStylePreset.CanyonPoet:
                     return "你正在玩英雄联盟，请用最损、最毒辣但不带脏字的峡谷黑话回击对方（例如：'键盘上撒把米 鸡啄的连招都比你顺'、'要不你挂机吧 少个提款机我们四打五好赢点'）。" + antiAiRules;
+                case SnarkyStylePreset.RoastMaster:
+                    return "你正在玩英雄联盟，请用最损、最毒辣但不带脏字的峡谷黑话回击对方（Roast 模式已关，当前为人设 RoastMaster 的干净版）。" + antiAiRules;
                 case SnarkyStylePreset.Custom:
                 default:
-                    return (string.IsNullOrWhiteSpace(CustomSystemPrompt)
+                    // 修复: CustomSystemPrompt 的默认值现在是 roast prompt, 关掉 Roast 模式
+                    // 后不能把它原样当干净提示词用, 否则"关掉"就是假关。检测到默认 roast
+                    // 文本时回退到干净版, 只有用户自己改写过的 Custom 才原样用。
+                    bool isRoastDefault = !string.IsNullOrWhiteSpace(CustomSystemPrompt)
+                        && CustomSystemPrompt.Contains("don't hold back");
+                    return (string.IsNullOrWhiteSpace(CustomSystemPrompt) || isRoastDefault
                         ? "你是一个英雄联盟老玩家，请用极短、冷嘲热讽的真实玩家口吻回击对方。"
                         : CustomSystemPrompt) + antiAiRules;
             }

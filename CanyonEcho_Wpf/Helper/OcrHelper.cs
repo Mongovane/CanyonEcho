@@ -82,7 +82,7 @@ namespace CanyonEcho_Wpf.Helper
                 byte[] rgbValues = new byte[bytes];
                 System.Runtime.InteropServices.Marshal.Copy(data.Scan0, rgbValues, 0, bytes);
 
-                // 统计平均亮度，判断是否为深色背景（LOL 聊天框通常平均亮度 < 115）
+                // 统计平均亮度，判断是否为深色背景（LOL 聊天框通常平均亮度 < 128，与下方阈值一致）
                 long lumSum = 0;
                 int pixelCount = width * height;
                 for (int y = 0; y < height; y++)
@@ -150,8 +150,8 @@ namespace CanyonEcho_Wpf.Helper
         {
             if (rawImage == null) return string.Empty;
 
-            string tempRawPath = Path.Combine(Path.GetTempPath(), $"zuanbot_ocr_raw_{Guid.NewGuid():N}.png");
-            string tempPrePath = Path.Combine(Path.GetTempPath(), $"zuanbot_ocr_pre_{Guid.NewGuid():N}.png");
+            string tempRawPath = Path.Combine(Path.GetTempPath(), $"canyonecho_ocr_raw_{Guid.NewGuid():N}.png");
+            string tempPrePath = Path.Combine(Path.GetTempPath(), $"canyonecho_ocr_pre_{Guid.NewGuid():N}.png");
 
             try
             {
@@ -221,7 +221,7 @@ if ($null -eq $engine) {{
 if ($null -ne $engine) {{
     $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
     foreach ($line in $result.Lines) {{
-        Write-Output ($line.Text -replace '\s+', '')
+        Write-Output (($line.Text -replace '\s+', ' ').Trim())
     }}
 }}
 $stream.Dispose()
@@ -240,9 +240,30 @@ $stream.Dispose()
 
                 using (var proc = Process.Start(psi))
                 {
-                    string output = proc.StandardOutput.ReadToEnd();
-                    proc.WaitForExit(8000);
-                    return output?.Trim() ?? string.Empty;
+                    if (proc == null) return string.Empty;
+                    // 修复: 原版先 ReadToEnd() 再 WaitForExit(8000), ReadToEnd 会一直堵到进程
+                    // 退出, 8000ms 超时根本没用; 进程挂了就永远卡住 OCR。修复后用带超时的
+                    // 异步读, 超时直接 Kill, 再读 stderr 记日志。
+                    var outputTask = proc.StandardOutput.ReadToEndAsync();
+                    if (!outputTask.Wait(8000))
+                    {
+                        try { proc.Kill(); } catch { }
+                        try { proc.WaitForExit(2000); } catch { }
+                        LogHelper.Log.Warn("本地 OCR PowerShell 进程超时, 已强制结束");
+                        return string.Empty;
+                    }
+                    if (!proc.WaitForExit(2000))
+                    {
+                        try { proc.Kill(); } catch { }
+                        return string.Empty;
+                    }
+                    if (proc.ExitCode != 0)
+                    {
+                        string err = string.Empty;
+                        try { err = proc.StandardError.ReadToEnd(); } catch { }
+                        LogHelper.Log.Warn($"本地 OCR PowerShell 退出码 {proc.ExitCode}: {err}");
+                    }
+                    return outputTask.Result?.Trim() ?? string.Empty;
                 }
             });
         }

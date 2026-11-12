@@ -35,7 +35,7 @@ namespace CanyonEcho_Wpf.ViewModels
             set => SetProperty(ref _TestResultText, value);
         }
 
-        public string Title => "AI 阴阳怪气反击 & OCR 识别设置";
+        public string Title => "AI 粗口 Roast 骂人 & OCR 识别设置";
 
         public event Action<IDialogResult> RequestClose;
 

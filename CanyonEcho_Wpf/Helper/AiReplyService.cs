@@ -44,8 +44,8 @@ namespace CanyonEcho_Wpf.Helper
             // 1. 纯内置离线引擎模式
             if (config.EngineMode == ReplyEngineMode.BuiltInOnly)
             {
-                string builtInReply = BuiltInSnarkyEngine.GenerateReply(parseResult, library);
-                return (builtInReply, $"内置引擎 [{parseResult.IntentCategory}]", parseResult);
+                string builtInReply = BuiltInSnarkyEngine.GenerateReply(parseResult, library, config.UseRoastMode);
+                return (builtInReply, $"内置引擎{(config.UseRoastMode ? "[粗口Roast]" : "")} [{parseResult.IntentCategory}]", parseResult);
             }
 
             // 2. LLM 模式 或 智能混合模式（且已配置 API Key 或使用本地 Ollama）
@@ -59,7 +59,12 @@ namespace CanyonEcho_Wpf.Helper
                     string llmReply = await CallOpenAiCompatibleApiAsync(parseResult, targetText, config);
                     if (!string.IsNullOrWhiteSpace(llmReply))
                     {
-                        return (CleanAiReply(llmReply), $"AI大模型 ({config.ModelName})", parseResult);
+                        string cleaned = CleanAiReply(llmReply);
+                        // v4.2.0: LLM 也可能吐出原形脏话, 在这里先隐形一次, 发送时还会再隐形一次
+                        // (SwearObfuscator 是幂等的, 第二次不再变化)。
+                        if (config.UseRoastMode && config.UseSwearObfuscation)
+                            cleaned = SwearObfuscator.Obfuscate(cleaned);
+                        return (cleaned, $"AI大模型 ({config.ModelName}){(config.UseRoastMode ? "[隐形Roast]" : "")}", parseResult);
                     }
                 }
                 catch (Exception ex)
@@ -77,8 +82,8 @@ namespace CanyonEcho_Wpf.Helper
             }
 
             // 3. 智能降级到内置离线阴阳怪气引擎
-            string fallbackReply = BuiltInSnarkyEngine.GenerateReply(parseResult, library);
-            return (fallbackReply, $"内置引擎兜底 [{parseResult.IntentCategory}]", parseResult);
+            string fallbackReply = BuiltInSnarkyEngine.GenerateReply(parseResult, library, config.UseRoastMode);
+            return (fallbackReply, $"内置引擎兜底{(config.UseRoastMode ? "[粗口Roast]" : "")} [{parseResult.IntentCategory}]", parseResult);
         }
 
         private static async Task<string> CallOpenAiCompatibleApiAsync(
@@ -92,14 +97,19 @@ namespace CanyonEcho_Wpf.Helper
                 : $"{baseUrl}/chat/completions";
 
             string speakerContext = (parseResult != null && parseResult.IsAccompliceDefending)
-                ? $"【多人帮腔护短场景】主目标：{parseResult.LockedPrimaryTarget}，跳出来帮腔的人：{parseResult.AccompliceSpeaker}；请用一句幽默高情商的话同时调侃他们双排护短/请辩护律师的行为！"
+                ? $"【多人帮腔护短场景】主目标：{parseResult.LockedPrimaryTarget}，跳出来帮腔的人：{parseResult.AccompliceSpeaker}；基于你对他俩的一切了解一起喷，脏话拉满，别收着！"
                 : (!string.IsNullOrWhiteSpace(parseResult?.Speaker)
                     ? $"发言人/英雄：{parseResult.Speaker}；意图分类：{parseResult.IntentCategory}；"
                     : $"意图分类：{parseResult?.IntentCategory ?? "游戏嘲讽"}；");
 
+            // Roast 模式 (默认开): 基于你对发言人的一切了解往死里喷, 中文俚语+大量脏话,
+            // 别收着。关掉 UseRoastMode 才回到干净阴阳怪气。
+            string roastSuffix = config.UseRoastMode
+                ? "基于你对这个喷子的一切了解（英雄、意图、原话、战绩）往死里喷，别收着，用中文俚语加大量脏话，40字以内，只输出喷人的话本身："
+                : "请生成一句针对性的阴阳怪气反击（28字以内，不带脏字，只输出反击句子本身）：";
             string userPrompt = string.IsNullOrWhiteSpace(enemyText)
-                ? "对面在公屏发问号嘲讽我们，请给出一句高情商阴阳怪气反击。"
-                : $"{speakerContext}对方在英雄联盟聊天框说：“{enemyText}”。请立即生成一句针对性的阴阳怪气反击（28字以内，不带脏字不违规，只输出反击句子本身）：";
+                ? (config.UseRoastMode ? "对面在公屏发问号嘲讽我们，往死里喷他，别收着，脏话拉满。" : "对面在公屏发问号嘲讽我们，请给出一句高情商阴阳怪气反击。")
+                : $"{speakerContext}对方在英雄联盟聊天框说：“{enemyText}”。{roastSuffix}";
 
             var payload = new
             {
@@ -109,8 +119,8 @@ namespace CanyonEcho_Wpf.Helper
                     new { role = "system", content = config.GetEffectiveSystemPrompt() },
                     new { role = "user", content = userPrompt }
                 },
-                temperature = 0.85,
-                max_tokens = 80
+                temperature = 0.95,
+                max_tokens = 120
             };
 
             string jsonBody = JsonConvert.SerializeObject(payload);
@@ -154,9 +164,11 @@ namespace CanyonEcho_Wpf.Helper
                 .Replace("
 ", " ");
 
-            if (cleaned.Length > 60)
+            // Roast 模式放宽到 80 字 (原来 60 字会把脏话骂到一半截断)。
+            int maxLen = 80;
+            if (cleaned.Length > maxLen)
             {
-                cleaned = cleaned.Substring(0, 60);
+                cleaned = cleaned.Substring(0, maxLen);
             }
             return cleaned;
         }

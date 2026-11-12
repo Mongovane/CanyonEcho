@@ -349,7 +349,7 @@ namespace CanyonEcho_Wpf.ViewModels
                     if (result)
                     {
                         var tempDir = Path.GetTempPath();
-                        var file = _apis.DownloadFile(tempDir, latestVersion.FileName, latestVersion.Url, latestVersion.Sha256);
+                        var file = await _apis.DownloadFileAsync(tempDir, latestVersion.FileName, latestVersion.Url, latestVersion.Sha256);
 
                         var assembly = Assembly.GetExecutingAssembly();
                         var stream = assembly.GetManifestResourceStream("costura.canyonechoupdate.exe");
@@ -364,7 +364,10 @@ namespace CanyonEcho_Wpf.ViewModels
                             stream.CopyTo(tempStream);
                         }
 
-                        string expectedHash = string.IsNullOrWhiteSpace(latestVersion.Sha256) ? "SKIP" : latestVersion.Sha256;
+                        // 修复: 原版 Sha256 为空时传 "SKIP" 哨兵, 更新器见到 SKIP 就跳过校验。
+                        // 哨兵字符串一旦被服务端 / 中间人塞进 VersionDto 就能绕过校验。
+                        // 修复后直接传空串, 更新器空串 = 不校验 (并在日志里警告), 没有魔法字符串。
+                        string expectedHash = latestVersion.Sha256 ?? "";
                         int currentPid = Process.GetCurrentProcess().Id;
                         var startInfo = new ProcessStartInfo(tempPath, $""{file}" "{assembly.Location}" "{expectedHash}" {currentPid}")
                         {
@@ -572,7 +575,8 @@ namespace CanyonEcho_Wpf.ViewModels
                 IsAll,
                 IsPerWord,
                 useClipboard,
-                IsZeroWidthAntiFilter);
+                IsZeroWidthAntiFilter,
+                AiSetting == null || AiSetting.UseSwearObfuscation);
         }
     }
 }

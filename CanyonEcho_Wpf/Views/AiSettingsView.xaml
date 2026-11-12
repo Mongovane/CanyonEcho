@@ -63,6 +63,9 @@
               <CheckBox Content="单行零宽字符防屏蔽(F8)" IsChecked="{Binding Config.UseZeroWidthAntiFilter}" Margin="0,4,16,0"/>
               <CheckBox Content="游戏内安全穿透悬浮窗HUD(F7)" IsChecked="{Binding Config.ShowInGameOverlay}" Margin="0,4,16,0"/>
               <CheckBox Content="仅检测到恶意/问号才反击" IsChecked="{Binding Config.OnlyReplyToMalicious}" Margin="0,4,16,0"/>
+              <CheckBox Content="粗口 Roast 骂人模式 (脏话拉满, 默认开)" IsChecked="{Binding Config.UseRoastMode}" Margin="0,4,16,0" ToolTip="开: LLM 和内置引擎都用中文俚语+大量脏话往死里喷。关: 回到干净阴阳怪气。开着被举报/禁言/封号风险自担"/>
+              <CheckBox Content="脏话隐形处理 (同音/变体/零宽, 防吞字, 默认开)" IsChecked="{Binding Config.UseSwearObfuscation}" Margin="0,4,16,0" ToolTip="开: 发送前把原形脏话换成艹/尼玛/特么/傻B等隐形写法, 并在脏话词内插零宽, 免得硬骂被聊天框吞掉。关: 原样发"/>
+              <TextBlock Text="⚠ 粗口模式会触发 LoL 聊天过滤与举报, 零宽防屏蔽 (F8) 不是免死金牌, 封号了别找我。" Foreground="Red" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
               <CheckBox Content="手动截图后记忆坐标供F5使用" IsChecked="{Binding Config.RememberLastSnipRegion}" Margin="0,4,0,0"/>
             </WrapPanel>
           </Grid>

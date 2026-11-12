@@ -225,6 +225,13 @@ namespace CanyonEcho_Wpf.Helper
             return work;
         }
 
+        // 修复: 原版 Dictionary 迭代顺序不保证, 且 "15" / "?" 这种词一刀切:
+        // "15分钟拿龙"会被当成投降, 任何带问号的长问句都会被当成问号嘲讽,
+        // OnlyReplyToMalicious 基本等于永远开。修复后用固定优先顺序,
+        // 抱团帮腔放最后, "15" 只认 "15投/15点/15吧/句末15", "?" 只认 <=6 字的短句。
+        private static readonly string[] IntentPriority =
+            { "甩锅打野", "质疑操作", "战绩嘲讽", "消极投降", "问号嘲讽", "祖安问候", "抱团帮腔" };
+
         private static bool DetectMaliciousIntent(string message, out string category, out string matchedKeyword)
         {
             category = "通用嘲讽";
@@ -234,13 +241,30 @@ namespace CanyonEcho_Wpf.Helper
                 return false;
 
             string lower = message.ToLowerInvariant();
-            foreach (var kvp in MaliciousIntentKeywords)
+            foreach (var cat in IntentPriority)
             {
-                foreach (var kw in kvp.Value)
+                if (!MaliciousIntentKeywords.TryGetValue(cat, out var keywords)) continue;
+                foreach (var kw in keywords)
                 {
+                    if (kw == "15")
+                    {
+                        if (Regex.IsMatch(lower, @"15\s*(投|点|吧|$|\s)"))
+                        {
+                            category = cat; matchedKeyword = kw; return true;
+                        }
+                        continue;
+                    }
+                    if (kw == "?" || kw == "？")
+                    {
+                        if (message.Trim().Length <= 6 && lower.Contains(kw.ToLowerInvariant()))
+                        {
+                            category = cat; matchedKeyword = kw; return true;
+                        }
+                        continue;
+                    }
                     if (lower.Contains(kw.ToLowerInvariant()))
                     {
-                        category = kvp.Key;
+                        category = cat;
                         matchedKeyword = kw;
                         return true;
                     }

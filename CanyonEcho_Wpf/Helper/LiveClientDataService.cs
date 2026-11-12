@@ -29,14 +29,22 @@ namespace CanyonEcho_Wpf.Helper
 
         static LiveClientDataService()
         {
-            try
+            // 修复: 原版 ServicePointManager.ServerCertificateValidationCallback += _ => true
+            // 是全局的, 一旦注册, 进程里所有 HTTPS (包括 LLM 的 DeepSeek/OpenAI 调用)
+            // 都会接受任意证书, 中间人随便看 API Key。修复后只对 127.0.0.1:2999
+            // 这个 LoL 本地自签名接口放行, 且只用本类的 HttpClientHandler, 不碰全局。
+            var handler = new HttpClientHandler
             {
-                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
-                ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
-            }
-            catch { }
+                ServerCertificateCustomValidationCallback = (request, cert, chain, sslPolicyErrors) =>
+                {
+                    string host = request?.RequestUri?.Host ?? "";
+                    if (host == "127.0.0.1" || host == "localhost")
+                        return true;
+                    return sslPolicyErrors == System.Net.Security.SslPolicyErrors.None;
+                }
+            };
 
-            _httpClient = new HttpClient
+            _httpClient = new HttpClient(handler)
             {
                 Timeout = TimeSpan.FromMilliseconds(1200)
             };

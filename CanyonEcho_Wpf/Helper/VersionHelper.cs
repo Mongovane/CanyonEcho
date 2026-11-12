@@ -33,14 +33,24 @@ namespace CanyonEcho_Wpf.Helper
         {
             if (latestVersion == null || string.IsNullOrWhiteSpace(latestVersion.VersionName)) return true;
             var currentVersionName = GetCurrentVersionName();
-            return CompareVersion(currentVersionName, latestVersion.VersionName) >= 0;
+            // 修复: 原版 CompareVersion 非法格式返回 0, IsNewestVersion 会把脏数据
+            // 当成"已是最新"悄悄吞掉。修复后非法格式直接视为不更新, 并记日志。
+            int? cmp = CompareVersion(currentVersionName, latestVersion.VersionName);
+            if (cmp == null)
+            {
+                LogHelper.Log.Warn($"版本号格式非法, 放弃更新判断: 当前={currentVersionName} 最新={latestVersion.VersionName}");
+                return true;
+            }
+            return cmp.Value >= 0;
         }
 
-        public static int CompareVersion(string v1, string v2)
+        /// <summary>合法返回 -1/0/1, 任一格式非法返回 null (不再返回 0 冒充相等)。</summary>
+        public static int? CompareVersion(string v1, string v2)
         {
-            if (!Regex.IsMatch(v1, _pattern) || !Regex.IsMatch(v2, _pattern))
+            if (string.IsNullOrWhiteSpace(v1) || string.IsNullOrWhiteSpace(v2)
+                || !Regex.IsMatch(v1, _pattern) || !Regex.IsMatch(v2, _pattern))
             {
-                return 0;
+                return null;
             }
 
             var version1 = v1.Split('.').Select(int.Parse).ToArray();

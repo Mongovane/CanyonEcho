@@ -395,17 +395,19 @@ namespace CanyonEcho_Wpf.ViewModels
                 }
 
                 int maxHistory = Math.Min(15, total / 2);
-                string picked = words.Words[_sharedRandom.Next(0, total)].Content;
-
-                for (int attempt = 0; attempt < 12; attempt++)
+                // 修复: 原版先随机抽一个 picked, 再循环 12 次找不在历史里的 candidate,
+                // 12 次都撞上历史时 picked 仍是历史里的那句, "绝不重复"就是句屁话。
+                // 修复后直接从「不在历史里的候选集」抽, 候选集空了就清空历史重抽。
+                var candidates = words.Words
+                    .Select(w => w.Content)
+                    .Where(c => !history.Contains(c))
+                    .ToList();
+                if (candidates.Count == 0)
                 {
-                    var candidate = words.Words[_sharedRandom.Next(0, total)].Content;
-                    if (!history.Contains(candidate))
-                    {
-                        picked = candidate;
-                        break;
-                    }
+                    history.Clear();
+                    candidates = words.Words.Select(w => w.Content).ToList();
                 }
+                string picked = candidates[_sharedRandom.Next(0, candidates.Count)];
 
                 history.Enqueue(picked);
                 while (history.Count > maxHistory && maxHistory > 0)

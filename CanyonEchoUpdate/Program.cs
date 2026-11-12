@@ -43,7 +43,13 @@ namespace CanyonEchoUpdate
                 }
 
                 // 安全校验 2：若提供了 SHA-256 哈希，则严格校验文件完整性，防止传输篡改
-                if (!string.IsNullOrWhiteSpace(expectedHash) && expectedHash != "SKIP")
+                // 修复: 原版用 "SKIP" 哨兵跳过校验, 魔法字符串可被注入。修复后空串 = 未提供
+                // 哈希, 明确记一条警告再继续, 不再认任何哨兵字符串。
+                if (string.IsNullOrWhiteSpace(expectedHash))
+                {
+                    logger.Warn("更新包未提供 SHA-256 哈希, 跳过完整性校验 (仅信任 HTTPS 来源)");
+                }
+                if (!string.IsNullOrWhiteSpace(expectedHash))
                 {
                     string actualHash = ComputeSha256(sourcePath);
                     if (!string.Equals(actualHash, expectedHash, StringComparison.OrdinalIgnoreCase))
