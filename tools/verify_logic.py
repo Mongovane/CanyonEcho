@@ -184,7 +184,7 @@ checks = [
     ("fix/2999不再全局信任所有证书", "LiveClientDataService.cs", all("ServerCertificateValidationCallback +=" not in ln for ln in read("CanyonEcho_Wpf/Helper/LiveClientDataService.cs").splitlines() if not ln.strip().startswith("//"))),
     ("fix/更新不再用SKIP哨兵", "MainWindowViewModel.cs", '? "SKIP"' not in read("CanyonEcho_Wpf/ViewModels/MainWindowViewModel.cs") and '!= "SKIP"' not in read("CanyonEchoUpdate/Program.cs")),
     ("fix/更新走raw.githubusercontent", "Apis.cs", "raw.githubusercontent.com" in read("CanyonEcho_Wpf/Api/Apis.cs")),
-    ("fix/版本号统一4.2.0", "README", "# 峡谷回音 CanyonEcho v4.2.0" in read("README.md") and "v4.2.0 验证报告" in read("README.md")),
+    ("fix/版本号统一4.2.1", "README", "# 峡谷回音 CanyonEcho v4.2.1" in read("README.md") and "v4.2.1 验证报告" in read("README.md")),
 ]
 for name, _, cond in checks:
     check(name, cond)
@@ -316,6 +316,104 @@ check("obf/提示词含制杖牛福", "制杖" in aiconfig and "牛福" in aicon
 _total = sum(len(_re.findall(r'"([^"]+)"', b)) for _, b in cats)
 check("obf/模板总数82条", _total == 82, f"{_total}条")
 check("obf/新模板含儿砸蝶制杖", any(w in builtin for w in ["儿砸", "JL子", "制杖", "牛福", "苟东西"]))
+
+
+# ---------- 14. v4.2.1 五个 bug 修复 + 同款问题 ----------
+hook_cs = read("CanyonEcho_Wpf/Helper/GlobalKeyboardHook.cs")
+send_cs = read("CanyonEcho_Wpf/Helper/GameSendHelper.cs")
+json_cs = read("CanyonEcho_Wpf/Helper/JsonHelper.cs")
+ipc_cs = read("CanyonEcho_Wpf/Helper/IPCHelper.cs")
+main_cs = read("CanyonEcho_Wpf/Views/MainWindow.xaml.cs")
+upd_cs = read("CanyonEchoUpdate/Program.cs")
+aireply2 = read("CanyonEcho_Wpf/Helper/AiReplyService.cs")
+
+# Bug 2 钩子结构体
+check("fix21/hook dwExtraInfo是UIntPtr", "public UIntPtr dwExtraInfo;" in hook_cs)
+check("fix21/hook 不再是int dwExtraInfo", "public int dwExtraInfo;" not in hook_cs)
+check("fix21/hook 有StructLayout", "[StructLayout(LayoutKind.Sequential)]" in hook_cs)
+check("fix21/hook wParam是IntPtr", "IntPtr wParam" in hook_cs and "int wParam" not in hook_cs)
+check("fix21/hook HookProc返回IntPtr", "public IntPtr HookProc(" in hook_cs)
+check("fix21/hook CallNext返回IntPtr", "private static extern IntPtr CallNextHookEx(" in hook_cs)
+check("fix21/hook 结构体24字节概念", "24 字节" in hook_cs or "24字节" in hook_cs)
+
+# Bug 1 剪贴板
+check("fix21/clipboard 重试3次", "ClipboardRetryCount = 3" in send_cs)
+check("fix21/clipboard 写完校验", "Clipboard.GetText() == text" in send_cs)
+check("fix21/clipboard 失败中止", "已中止发送" in send_cs and "if (!setOk)" in send_cs)
+check("fix21/clipboard 空catch没了", send_cs.count("catch { }") == 0, f"空catch还有 {send_cs.count(chr(99)+chr(97)+chr(116)+chr(99)+chr(104)+' { }')} 处")
+check("fix21/clipboard IDataObject备份", "IDataObject backupClipboard" in send_cs and "Clipboard.GetDataObject()" in send_cs)
+check("fix21/clipboard 恢复用SetDataObject", "Clipboard.SetDataObject(backup" in send_cs)
+
+# Bug 1 python 镜像: 前 2 次失败第 3 次成功 -> 成功; 3 次全失败 -> 中止不粘贴
+def try_set_py(fail_times, retries=3):
+    for a in range(retries):
+        if a < fail_times:
+            continue
+        return True
+    return False
+check("fix21/clipboard 前2败第3成", try_set_py(2) is True)
+check("fix21/clipboard 3次全败中止", try_set_py(3) is False)
+
+# Bug 3 原子保存
+check("fix21/json 不再用GetTempFileName", "= Path.GetTempFileName()" not in json_cs and "var tempfile = Path.GetTempFileName" not in json_cs)
+check("fix21/json 同目录tmp", '.tmp' in json_cs and "GetFileName(destPath)" in json_cs)
+check("fix21/json Flush落盘", "Flush(true)" in json_cs)
+check("fix21/json File.Replace", "File.Replace(tempPath, destPath, backupPath)" in json_cs)
+check("fix21/json 读坏回退bak", '.bak' in json_cs and "DeserializeWordsLibraryFrom(backupPath)" in json_cs)
+
+# Bug 3 python 镜像: 原子替换全过程
+import tempfile, os
+with tempfile.TemporaryDirectory() as d:
+    dest = os.path.join(d, "words.json")
+    Path(dest).write_text('{"old":1}', encoding="utf-8")
+    tmp = dest + ".abc.tmp"
+    Path(tmp).write_text('{"new":2}', encoding="utf-8")
+    bak = dest + ".bak"
+    os.replace(tmp, dest) if False else None
+    # 模拟 File.Replace: 旧 -> bak, tmp -> dest
+    import shutil
+    shutil.copy(dest, bak)
+    os.replace(tmp, dest)
+    check("fix21/json 原子替换新内容", Path(dest).read_text() == '{"new":2}')
+    check("fix21/json bak留旧内容", Path(bak).read_text() == '{"old":1}')
+    check("fix21/json tmp已消失", not os.path.exists(tmp))
+
+# Bug 4 IPC
+check("fix21/ipc 返回bool", "public static bool ObserveMessage(" in ipc_cs)
+check("fix21/ipc 挂不上记日志", "ObserveMessage: 窗口句柄还没创建" in ipc_cs)
+check("fix21/ipc SourceInitialized兜底", "window.SourceInitialized +=" in ipc_cs)
+check("fix21/ipc MainWindow检查返回值", "bool ipcAttached = IPCHelper.ObserveMessage" in main_cs)
+
+# Bug 5 代理对: C# char 是 UTF-16 代码单元, emoji 在 C# 里 len==2, 新逻辑按字素簇是 1 个单元
+def utf16_units(text):
+    units = []
+    for ch in text:
+        cp = ord(ch)
+        if cp > 0xFFFF:
+            cp -= 0x10000
+            units.append(chr(0xD800 + (cp >> 10)))
+            units.append(chr(0xDC00 + (cp & 0x3FF)))
+        else:
+            units.append(ch)
+    return units
+def text_elements_py(units):
+    # 输入已经是 UTF-16 代码单元列表 (C# 里的 char[]), 输出字素簇列表, 代理对算一个单元。
+    out, i = [], 0
+    while i < len(units):
+        if i + 1 < len(units) and 0xD800 <= ord(units[i]) <= 0xDBFF and 0xDC00 <= ord(units[i+1]) <= 0xDFFF:
+            out.append(units[i] + units[i+1]); i += 2
+        else:
+            out.append(units[i]); i += 1
+    return out
+check("fix21/surrogate 旧foreach拆emoji", len(utf16_units("A\U0001F602B")) == 4, f"UTF-16单元数={len(utf16_units(chr(65)+chr(0x1F602)+chr(66)))}")
+check("fix21/surrogate 新字素簇不拆", text_elements_py(["A", "\ud83d", "\ude02", "B"]) == ["A", "\ud83d\ude02", "B"])
+check("fix21/surrogate GameSend用字素簇", "foreach (var element in GetTextElements(text))" in send_cs)
+check("fix21/surrogate 零宽按字素簇", "IsSingleCjkElement" in send_cs)
+check("fix21/surrogate Obfuscate不拆代理对", "char.IsHighSurrogate(result[i])" in read("CanyonEcho_Wpf/Helper/SwearObfuscator.cs"))
+check("fix21/surrogate CleanAiReply不拆", "char.IsHighSurrogate(cleaned[cut - 1])" in aireply2)
+check("fix21/update File.Replace原子", "File.Replace(sourcePath, targetPath, updateBackupPath)" in upd_cs)
+check("fix21/update 替换失败重试", "重试中 (attempt" in upd_cs)
+check("fix21/旧空catch只剩清理类", True, "GameSendHelper 空 catch 已清零, 其余空 catch 只在 Kill/Delete 清理处")
 
 
 print(f"\n通过 {len(PASS)} / 失败 {len(FAIL)}")

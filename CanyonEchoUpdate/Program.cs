@@ -98,8 +98,32 @@ namespace CanyonEchoUpdate
                     }
                 }
 
-                File.Copy(sourcePath, targetPath, true);
-                try { File.Delete(sourcePath); } catch { }
+                // v4.2.1: 跟词库保存同款问题, File.Copy 写到一半崩了主程序就坏了。
+                // 改成 File.Replace 原子替换 + .bak, 目标还被占着就重试 3 次再报错。
+                string updateBackupPath = targetPath + ".bak";
+                bool replaced = false;
+                for (int attempt = 0; attempt < 3 && !replaced; attempt++)
+                {
+                    try
+                    {
+                        if (File.Exists(targetPath))
+                            File.Replace(sourcePath, targetPath, updateBackupPath);
+                        else
+                            File.Move(sourcePath, targetPath);
+                        replaced = true;
+                    }
+                    catch (IOException ex)
+                    {
+                        logger.Warn($"更新替换失败, 重试中 (attempt {attempt + 1}/3, 目标可能还被占用)", ex);
+                        System.Threading.Thread.Sleep(500);
+                    }
+                }
+                if (!replaced)
+                {
+                    logger.Error("更新替换失败 (重试 3 次后仍失败), 主程序未动, 旧版本还在");
+                    return;
+                }
+                try { if (File.Exists(sourcePath)) File.Delete(sourcePath); } catch { }
 
                 Process.Start(new ProcessStartInfo(targetPath) { UseShellExecute = true });
                 logger.Info("CanyonEcho 更新执行成功");

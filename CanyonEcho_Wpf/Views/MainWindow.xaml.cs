@@ -41,13 +41,18 @@ namespace CanyonEcho_Wpf.Views
         {
             base.OnSourceInitialized(e);
 
-            IPCHelper.ObserveMessage(this, msg =>
+            // v4.2.1: ObserveMessage 现在返回 bool, 没挂上要记日志, 不能静默丢 IPC。
+            bool ipcAttached = IPCHelper.ObserveMessage(this, msg =>
             {
                 if (msg == "显示")
                 {
                     Button_Click(this, null);
                 }
             });
+            if (!ipcAttached)
+            {
+                LogHelper.Log.Warn("主窗口 IPC 钩子本次没挂上, 已注册 SourceInitialized 兜底");
+            }
         }
 
         /// <summary>

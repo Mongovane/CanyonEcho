@@ -31,6 +31,7 @@ namespace CanyonEcho_Wpf.Helper
     ///    这里只插脏话词内部, 一句话最多多 2-3 个不可见字符。
     ///
     /// 诚实说明: 腾讯的过滤词表不公开, 也没在真游戏里测过, 这套只能降低被吞的概率,
+    /// v4.2.1: Obfuscate() 零宽插入不再拆代理对, 详见 GameSendHelper Bug 5。
     /// 不能保证 100% 发出去。旧腾讯词库 (2022, lunzima/profanities.txt, 5168 行)
     /// 里 傻逼/你妈/他妈/傻B/SB/TMD/你爸/傻子 都是原形命中, 儿子/孙子/智障/
     /// 废物/垃圾/牛逼/滚 单字不在旧词库里, 但现在是组合+语义+随机过滤
@@ -202,8 +203,19 @@ namespace CanyonEcho_Wpf.Helper
                 }
                 if (hit == null)
                 {
-                    sb.Append(result[i]);
-                    i++;
+                    // v4.2.1 Bug 5 顺手修: 代理对 (emoji / 生僻字, 两个 char) 必须一起追加,
+                    // 绝不能拆开, 否则零宽插进去或者下游按 char 切分都会把它弄成乱码。
+                    if (i + 1 < result.Length && char.IsHighSurrogate(result[i]) && char.IsLowSurrogate(result[i + 1]))
+                    {
+                        sb.Append(result[i]);
+                        sb.Append(result[i + 1]);
+                        i += 2;
+                    }
+                    else
+                    {
+                        sb.Append(result[i]);
+                        i++;
+                    }
                 }
                 else
                 {

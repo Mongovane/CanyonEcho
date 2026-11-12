@@ -165,10 +165,18 @@ namespace CanyonEcho_Wpf.Helper
 ", " ");
 
             // Roast 模式放宽到 80 字 (原来 60 字会把脏话骂到一半截断)。
+            // v4.2.1: Substring(0, 80) 会在第 80 个 char 正好是代理对高位时把它拆开,
+            // 跟 Bug 5 同款。改成按字素簇截, 宁可少一个字, 不发半个 emoji。
             int maxLen = 80;
             if (cleaned.Length > maxLen)
             {
-                cleaned = cleaned.Substring(0, maxLen);
+                int cut = maxLen;
+                if (cut > 0 && cut < cleaned.Length
+                    && char.IsHighSurrogate(cleaned[cut - 1]) && char.IsLowSurrogate(cleaned[cut]))
+                {
+                    cut -= 1;
+                }
+                cleaned = cleaned.Substring(0, cut);
             }
             return cleaned;
         }

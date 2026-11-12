@@ -8,6 +8,13 @@ namespace CanyonEcho_Wpf.Helper
 {
     /// <summary>
     /// 安全加固版 IPC 进程间通信（修复原版 LPStr 编码乱码、未校验消息令牌及未释放非托管内存漏洞）
+    /// v4.2.1 修了截图里的 Bug 4 (隐患):
+    /// 原版 ObserveMessage 返回 void, PresentationSource.FromVisual(window) 返回 null
+    /// 就默默返回, 谁在窗口句柄创建之前调它, 钩子就静默失效, 连个日志都没有。
+    /// 现在返回 bool 表示这次有没有真的挂上, 挂不上记 Warn 日志, 并且如果句柄还没创建,
+    /// 会等到 SourceInitialized 再挂一次, 不再静默丢消息。
+    /// 当前唯一调用点 MainWindow.OnSourceInitialized 本来就是对的时机, 所以主窗口
+    /// 这条路之前没触发, 但接口本身必须防住后来人调错时机。
     /// </summary>
     public class IPCHelper
     {
@@ -42,13 +49,29 @@ namespace CanyonEcho_Wpf.Helper
 
         private static Action<string> _handler;
 
-        public static void ObserveMessage(Window window, Action<string> handler)
+        /// <summary>
+        /// 挂 WM_COPYDATA 钩子。返回 true = 这次真的挂上了; 返回 false = 窗口句柄还没创建,
+        /// 已经注册了 SourceInitialized 兜底, 句柄创建后会自动再挂一次, 调用方不要当成已挂上。
+        /// </summary>
+        public static bool ObserveMessage(Window window, Action<string> handler)
         {
+            if (window == null) throw new ArgumentNullException(nameof(window));
             _handler = handler;
             if (PresentationSource.FromVisual(window) is HwndSource hwndSource)
             {
                 hwndSource.AddHook(WndProc);
+                return true;
             }
+
+            LogHelper.Log.Warn("IPCHelper.ObserveMessage: 窗口句柄还没创建, 已注册 SourceInitialized 兜底, 句柄创建后自动重挂");
+            EventHandler deferred = null;
+            deferred = (sender, e) =>
+            {
+                window.SourceInitialized -= deferred;
+                ObserveMessage(window, handler);
+            };
+            window.SourceInitialized += deferred;
+            return false;
         }
 
         private static IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)

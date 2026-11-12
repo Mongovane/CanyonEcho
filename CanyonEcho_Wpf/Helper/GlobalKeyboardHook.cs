@@ -7,6 +7,14 @@ namespace CanyonEcho_Wpf.Helper
 {
     /// <summary>
     /// 全局低级键盘钩子（修复版：实现 IDisposable 确定性释放句柄，防止系统钩子泄露与超时失灵）
+    /// v4.2.1 修了截图里确认的 Bug 2:
+    /// 原版 keyBoardHookStruct.dwExtraInfo 声明成 int (4 字节), 而原生 KBDLLHOOKSTRUCT
+    /// 里它是 ULONG_PTR, 64 位下 8 字节, 结构体一共应该是 24 字节不是 20 字节。
+    /// 现在 dwExtraInfo 改成 UIntPtr, wParam 改成 IntPtr, 结构体显式标
+    /// [StructLayout(LayoutKind.Sequential)], HookProc / CallNextHookEx 的签名也按
+    /// 原生 LowLevelKeyboardProc / CallNextHookEx 对齐 (nCode int, wParam WPARAM,
+    /// 返回 LRESULT)。现在只读 vkCode (偏移 0) 所以碰巧没出事, 但回传结构体
+    /// 或者读后面字段时旧写法一定错。
     /// </summary>
     public class GlobalKeyboardHook : IDisposable
     {
@@ -60,7 +68,7 @@ namespace CanyonEcho_Wpf.Helper
             _disposed = true;
         }
 
-        public int HookProc(int code, int wParam, ref keyBoardHookStruct lParam)
+        public IntPtr HookProc(int code, IntPtr wParam, ref keyBoardHookStruct lParam)
         {
             if (code >= 0)
             {
@@ -68,17 +76,17 @@ namespace CanyonEcho_Wpf.Helper
                 if (HookedKeys.Contains(key))
                 {
                     KeyEventArgs kArg = new KeyEventArgs(key);
-                    if ((wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) && KeyDown != null)
+                    if ((wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN) && KeyDown != null)
                     {
                         KeyDown(this, kArg);
                     }
-                    else if ((wParam == WM_KEYUP || wParam == WM_SYSKEYUP) && KeyUp != null)
+                    else if ((wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP) && KeyUp != null)
                     {
                         KeyUp(this, kArg);
                     }
                     if (kArg.Handled)
                     {
-                        return 1;
+                        return (IntPtr)1;
                     }
                 }
             }
@@ -86,7 +94,7 @@ namespace CanyonEcho_Wpf.Helper
         }
 
         [DllImport("user32.dll", CharSet = CharSet.None, ExactSpelling = false)]
-        private static extern int CallNextHookEx(IntPtr hhk, int code, int wParam, ref keyBoardHookStruct lParam);
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int code, IntPtr wParam, ref keyBoardHookStruct lParam);
 
         [DllImport("kernel32.dll", CharSet = CharSet.None, ExactSpelling = false)]
         private static extern IntPtr LoadLibrary(string lpFileName);
@@ -100,15 +108,16 @@ namespace CanyonEcho_Wpf.Helper
         public event KeyEventHandler KeyDown;
         public event KeyEventHandler KeyUp;
 
+        [StructLayout(LayoutKind.Sequential)]
         public struct keyBoardHookStruct
         {
             public int vkCode;
             public int scanCode;
             public int flags;
             public int time;
-            public int dwExtraInfo;
+            public UIntPtr dwExtraInfo;
         }
 
-        public delegate int LLKeyboardHook(int code, int wParam, ref keyBoardHookStruct lParam);
+        public delegate IntPtr LLKeyboardHook(int code, IntPtr wParam, ref keyBoardHookStruct lParam);
     }
 }

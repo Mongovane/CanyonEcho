@@ -1,8 +1,8 @@
 {
-  "Url": "https://github.com/Mongovane/CanyonEcho/releases/download/v4.2.0/峡谷回音.exe",
+  "Url": "https://github.com/Mongovane/CanyonEcho/releases/download/v4.2.1/峡谷回音.exe",
   "FileName": "峡谷回音.exe",
-  "VersionName": "4.2.0",
-  "Description": "v4.2.0: 脏话隐形扩表 (儿子->儿砸/JL子, 爹->蝶, 孙子->孙砸, 智障->制杖, 牛逼->牛福, 模板 61->82 条); 详见 VERIFICATION.md",
+  "VersionName": "4.2.1",
+  "Description": "v4.2.1: 修截图确认的5个bug (剪贴板重试+校验+IDataObject备份, 键盘钩子ULONG_PTR, 词库原子保存+File.Replace+.bak, IPC返回bool, 逐字发送按字素簇不拆代理对) + 更新器原子替换 + LLM截断不拆代理对; 详见 VERIFICATION.md",
   "Sha256": "",
   "Date": "2026-11-12T00:00:00"
 }

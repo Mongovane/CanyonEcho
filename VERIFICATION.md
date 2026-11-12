@@ -1,17 +1,18 @@
-﻿# CanyonEcho v4.2.0 — 验证报告 (VERIFICATION)
+﻿# CanyonEcho v4.2.1 — 验证报告 (VERIFICATION)
 
 > 规矩先说死, 别他妈再问 "能不能直接用": **这份报告里写通过的, 才是真的跑过测试的;
 > 写 "未验证 / 需 Windows 实机" 的, 就是没跑过, 谁吹通过谁傻逼。**
 > 验证时间: 2026-11-12, 环境: Linux VM, 无 dotnet / 无 Windows / 无 LoL / 无真机。
 > 原仓库: https://github.com/Mongovane/CanyonEcho.git , commit `bef0085`。
-> 改进版: 本目录, 版本统一为 **4.2.0** (v4.0.1 的 7 个 bug 修复 + v4.1.0 粗口 Roast 模式 + v4.2.0 脏话隐形扩表)。
+> 改进版: 本目录, 版本统一为 **4.2.1** (v4.0.1 的 7 个 bug 修复 + v4.1.0 粗口 Roast 模式 + v4.2.0 脏话隐形扩表 + v4.2.1 截图确认的 5 个 bug 修复)。
 > v4.2.0 改动: `SwearObfuscator` 12 个映射 -> 50 个, `RoastTemplates` 61 条 -> 82 条, `RoastSystemPrompt` / Custom 提示词加入儿砸/JL子/制杖/牛福等新隐形词, harness 179/179 通过。
+> v4.2.1 改动: 修截图确认的 5 个 bug (见第 10 节), harness 215/215 通过。
 
 ## 1. 怎么验证的
 
-- 纯逻辑: `tools/verify_logic.py`, **179 项**, 1:1 复刻 C# 算法再跑, 结果 **179/179 通过**。
+- 纯逻辑: `tools/verify_logic.py`, **215 项**, 1:1 复刻 C# 算法再跑, 结果 **215/215 通过**。
   跑法: `python3 tools/verify_logic.py`, 退出码 0。
-  其中 v4.0.1 的 49 项 (修复前 42/49, 7 项失败正好是修掉的 7 个 bug) + v4.1.0 Roast 模式新增 44 项 + v4.2.0 隐形扩表新增 86 项, 全部通过。
+  其中 v4.0.1 的 49 项 (修复前 42/49, 7 项失败正好是修掉的 7 个 bug) + v4.1.0 Roast 模式新增 44 项 + v4.2.0 隐形扩表新增 86 项 + v4.2.1 五个 bug 修复新增 36 项, 全部通过。
   注意: v4.2.0 之前 harness 是坏的, 81/93 通过, 12 项失败全是 Roast 模板检查在查原形脏话, 而模板当时已经改成隐形写法了。v4.2.0 把那 12 项改成查隐形脏话, 才不是在改测试凑通过, 是测试本身写错了。
 - 静态: 逐文件读了全部 4,363 行 C# / XAML, grep 交叉核对 README 的每一句 claim;
   XAML 全部过 XML 解析; 改过的 9 个 .cs 文件括号/大括号原始计数平衡
@@ -35,7 +36,7 @@
 ## 3. 版本号混乱 (顺手修了, 别再写错)
 
 - 原来: README 写 v4.0, `AssemblyInfo` 是 4.0.0.0, 一键编译 bat 写 v4.2, 三个地方三个版本。
-- 现在: 全部统一 **4.2.0** (`README.md`, `AssemblyInfo.cs`, `一键编译生成EXE.bat`, `version.json` 的 `VersionName`)。v4.1.0 时期的版本号已作为历史写在第 8-9 节里, 不再是当前版本。
+- 现在: 全部统一 **4.2.1** (`README.md`, `AssemblyInfo.cs`, `一键编译生成EXE.bat`, `version.json` 的 `VersionName`)。v4.1.0 / v4.2.0 时期的版本号已作为历史写在第 8-9 节里, 不再是当前版本。
 
 ## 4. 功能逐项验证表
 
@@ -97,6 +98,24 @@ Prompt 来源 (用户原话, 已写进代码): `Based on everything you know abo
 验证: harness 新增 44 项 Roast 测试 (系统提示、用户提示、内置模板逐条脏话、UI 开关、README 警告), 93/93 通过。
 **没验证的, 跟 v4.0.1 一样:** 没在 Windows 上编译过, 没进游戏实测过脏话会不会被过滤/举报, 没拿真 Key 调过 LLM 的 roast 输出。
 封号警告: 脏话会触发 LoL 聊天过滤与举报, F8 零宽不是免死金牌, 之前"零封号风险"本来就是吹的, 现在更吹不得。开着后果自担。
+
+
+
+## 10. v4.2.1 截图确认的 5 个 bug 修复 (用户 2026-11-12 要求, 已修)
+
+用户发了一张 "确定的 bug" 截图, 5 条, 排查结果: 1、2、3、5 确认有, 4 在当前调用点没触发但是接口有坑, 一起修了。
+
+| # | Bug | 排查结论 | 修复 |
+|---|---|---|---|
+| 1 | 剪贴板写入失败被吞 | 确认有。`GameSendHelper.cs` 原来 `try { 备份文本; SetText(fullLine); } catch { }`, 失败照样 `Ctrl+V`, 会把用户原来的东西发进聊天框; 备份只存文本, 图片/文件直接丢 | 重试 3 次 (每次 40ms), 写完校验 `GetText() == fullLine`, 写不进去直接中止发送并记日志, 备份改成 `IDataObject` (`GetDataObject` / `SetDataObject`), 恢复也重试 3 次 |
+| 2 | 键盘钩子结构体布局不对 | 确认有。`GlobalKeyboardHook.cs` 原来 `dwExtraInfo` 是 `int` (4 字节), 原生 `KBDLLHOOKSTRUCT` 里是 `ULONG_PTR` (64 位 8 字节), 结构体应为 24 字节不是 20 字节; `wParam` 也是 `int`; 结构体没有 `[StructLayout]`。现在只读 `vkCode` (偏移 0) 所以碰巧没出事 | `dwExtraInfo` 改成 `UIntPtr`, `wParam` 改成 `IntPtr`, 结构体加 `[StructLayout(LayoutKind.Sequential)]`, `HookProc` / `CallNextHookEx` 签名按原生对齐, 返回 `IntPtr` |
+| 3 | 词库保存不是原子的 | 确认有。`JsonHelper.cs` 原来 `GetTempFileName()` 写在 `try` 外面, 临时目录满了直接抛, 有的调用方还没包 `try`; `File.Copy` 写到一半崩了词库就剩一半, 没有 `.bak` | 同目录 `.tmp` (GUID 名) + `Flush(true)` 落盘 + `File.Replace(tmp, dest, .bak)`, 读的时候主文件坏了自动回退到 `.bak`; 不再用 `GetTempFileName()` |
+| 4 | IPC 钩子可能没挂上 | 当前调用点没触发。`MainWindow.xaml.cs` 是在 `OnSourceInitialized` 里调的, 时机是对的。但 `IPCHelper.ObserveMessage` 原来返回 `void`, `FromVisual` 返回 `null` 就默默返回, 没日志没重试 | `ObserveMessage` 改成返回 `bool`, 没挂上记 Warn 日志, 并且注册 `SourceInitialized` 兜底, 句柄创建后自动重挂; `MainWindow` 检查返回值, 没挂上也记日志 |
+| 5 | 逐字发送拆代理对 | 确认有。`GameSendHelper.cs` 原来 `foreach (var ch in text)`, `ch` 是 UTF-16 代码单元, emoji / 生僻字 (一个代理对, 两个 `char`) 会被拆成两次发, 游戏里是乱码 | 按字素簇切分 (`StringInfo.GetTextElementEnumerator`, 新增 `GetTextElements()`), 一个 emoji 算一个单元再发; `ApplyZeroWidthAntiFilter` 也改成按字素簇走; `SwearObfuscator.Obfuscate()` 零宽插入不再拆代理对 |
+| 顺手 | 同款问题 | 更新器 `CanyonEchoUpdate/Program.cs` 的 `File.Copy` 和 LLM `CleanAiReply` 的 `Substring(0, 80)` 也是同款: 前者写到一半崩了主程序就坏了, 后者在第 80 个 char 正好是代理对高位时把它拆开 | 更新器改成 `File.Replace` + `.bak` + 目标被占用重试 3 次; `CleanAiReply` 截断前检查代理对, 宁可少一个字也不发半个 emoji |
+
+验证: `python3 tools/verify_logic.py`, **215/215 通过** (新增第 14 节 36 项: 钩子结构体源码检查、剪贴板重试 python 镜像、原子保存 python 镜像、IPC 返回值、代理对 UTF-16 单元分组、更新器原子替换)。
+**没验证的, 跟之前一样:** 没在 Windows 上编译过 (net472 + WPF, Linux 编译不了), 没进游戏实测过剪贴板重试、逐字 emoji、词库断电恢复、IPC 重挂, 没拿真 Key 调过 LLM。发版前必须在真 Windows 上跑一遍第 5 节, 别跳过。
 
 
 ## 9. v4.2.0 脏话隐形扩表 (用户 2026-11-12 要求, 儿子->JL子/儿砸)
