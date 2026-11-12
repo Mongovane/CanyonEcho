@@ -124,26 +124,64 @@ namespace CanyonEcho_Wpf.Helper
             };
 
             string jsonBody = JsonConvert.SerializeObject(payload);
-            using (var request = new HttpRequestMessage(HttpMethod.Post, endpoint))
+            // v4.3.0: 原来只发一次, 429 限流/5xx/12 秒超时直接抛, 调用方立刻
+            // 降级内置引擎, 对面刷屏时 LLM 基本等于摆设。改成最多 3 次:
+            // 只重试 429/5xx/网络异常/超时, 400/401/403/404 (Key 错了、模型
+            // 不存在) 重试也没用, 直接抛。退避 500ms、1000ms, 别一上来就猛冲。
+            Exception lastError = null;
+            bool fatalHttpError = false;
+            for (int attempt = 0; attempt < 3; attempt++)
             {
-                if (!string.IsNullOrWhiteSpace(config.ApiKey))
+                try
                 {
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", config.ApiKey.Trim());
-                }
-                request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-
-                using (var response = await _httpClient.SendAsync(request))
-                {
-                    string respContent = await response.Content.ReadAsStringAsync();
-                    if (!response.IsSuccessStatusCode)
+                    using (var request = new HttpRequestMessage(HttpMethod.Post, endpoint))
                     {
-                        throw new HttpRequestException($"HTTP {(int)response.StatusCode}: {respContent}");
-                    }
+                        if (!string.IsNullOrWhiteSpace(config.ApiKey))
+                        {
+                            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", config.ApiKey.Trim());
+                        }
+                        request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
-                    var jObj = JObject.Parse(respContent);
-                    return jObj["choices"]?[0]?["message"]?["content"]?.ToString();
+                        using (var response = await _httpClient.SendAsync(request))
+                        {
+                            string respContent = await response.Content.ReadAsStringAsync();
+                            if (response.IsSuccessStatusCode)
+                            {
+                                var jObj = JObject.Parse(respContent);
+                                return jObj["choices"]?[0]?["message"]?["content"]?.ToString();
+                            }
+
+                            int status = (int)response.StatusCode;
+                            bool retryable = status == 429 || status >= 500;
+                            if (!retryable)
+                            {
+                                // 400/401/403/404: Key 错了、模型不存在, 重试 100 次也没用。
+                                fatalHttpError = true;
+                                throw new HttpRequestException($"HTTP {status}: {respContent}");
+                            }
+                            if (attempt == 2)
+                                throw new HttpRequestException($"HTTP {status}: {respContent}");
+                            lastError = new HttpRequestException($"HTTP {status}: {respContent}");
+                        }
+                    }
                 }
+                catch (TaskCanceledException ex)
+                {
+                    // 超时 (12 秒) 当可重试, 最后一试再抛。
+                    if (attempt == 2) throw;
+                    lastError = ex;
+                }
+                catch (HttpRequestException ex)
+                {
+                    // 400/401/403/404 直接抛, 别重试; 最后一试也直接抛。
+                    if (fatalHttpError || attempt == 2) throw;
+                    lastError = ex;
+                }
+
+                LogHelper.Log.Warn($"LLM 调用失败, {500 * (attempt + 1)}ms 后重试 (attempt {attempt + 1}/3)", lastError);
+                await Task.Delay(500 * (attempt + 1));
             }
+            throw lastError ?? new HttpRequestException("LLM 调用失败 (重试 3 次后仍失败)");
         }
 
         private static string CleanAiReply(string raw)

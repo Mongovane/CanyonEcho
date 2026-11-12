@@ -1,8 +1,8 @@
-{
-  "Url": "https://github.com/Mongovane/CanyonEcho/releases/download/v4.2.1/峡谷回音.exe",
+﻿{
+  "Url": "https://github.com/Mongovane/CanyonEcho/releases/download/v4.3.0/峡谷回音.exe",
   "FileName": "峡谷回音.exe",
-  "VersionName": "4.2.1",
-  "Description": "v4.2.1: 修截图确认的5个bug (剪贴板重试+校验+IDataObject备份, 键盘钩子ULONG_PTR, 词库原子保存+File.Replace+.bak, IPC返回bool, 逐字发送按字素簇不拆代理对) + 更新器原子替换 + LLM截断不拆代理对; 详见 VERIFICATION.md",
+  "VersionName": "4.3.0",
+  "Description": "v4.3.0: 脏话升级 (烧掉的6个词换掉, 变体轮换, 零宽轮换, 模板每条最多2个脏话词, 祖安语录外站词库 min 655条) + 修 ,, 编译错误 + Random线程安全 + SwearObfuscator预排序 + Roast限流 + LLM重试 + AiConfig原子保存 + 词库损坏不删档 + 80ms改实话; 详见 VERIFICATION.md",
   "Sha256": "",
   "Date": "2026-11-12T00:00:00"
 }

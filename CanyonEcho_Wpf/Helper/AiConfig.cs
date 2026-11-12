@@ -85,6 +85,28 @@ namespace CanyonEcho_Wpf.Helper
             set => SetProperty(ref _UseSwearObfuscation, value);
         }
 
+        private int _RoastCooldownSeconds = 5;
+        /// <summary>
+        /// v4.3.0: 两次 OCR 自动 roast 之间最少隔几秒, 默认 5 秒。连按 F5 刷屏
+        /// 也不会一分钟发十几句, 烧额度 + 招举报。
+        /// </summary>
+        public int RoastCooldownSeconds
+        {
+            get => _RoastCooldownSeconds;
+            set => SetProperty(ref _RoastCooldownSeconds, value < 0 ? 0 : value);
+        }
+
+        private int _RoastMaxPerMatch = 12;
+        /// <summary>
+        /// v4.3.0: 一局 (10 分钟滑动窗口) 最多自动发几条 roast, 默认 12 条。
+        /// 超了就停发只提示, 免得一局喷太多被举报禁言。手动 F2/F3/F6 不限。
+        /// </summary>
+        public int RoastMaxPerMatch
+        {
+            get => _RoastMaxPerMatch;
+            set => SetProperty(ref _RoastMaxPerMatch, value < 1 ? 1 : value);
+        }
+
         private string _ApiBaseUrl = "https://api.deepseek.com/v1";
         public string ApiBaseUrl
         {
@@ -119,7 +141,7 @@ namespace CanyonEcho_Wpf.Helper
             set => SetProperty(ref _ModelName, value);
         }
 
-        private string _CustomSystemPrompt = "Based on everything you know about this player, roast and don't hold back. Say it in Chinese slang, with way more Chinese swear words, but disguised so the LoL chat box won't swallow them. 基于你对这个喷子的一切了解往死里喷，别收着，脏话用隐形写法，绝对不要写原形：操->艹，你妈->尼玛，他妈->特么，傻逼->傻B/SB/煞笔，废物->废勿，菜逼->菜B，滚->衮，垃圾->辣鸡，脑瘫->脑摊，脑残->脑蚕，智障->制杖，弱智->若智，白痴->白吃，牛逼->牛福/牛批，狗东西->苟东西，儿子->儿砸/JL子，爹->蝶，叫爹->叫蝶，孙子->孙砸，爸爸->粑粑，老妈->老冯，操你妈->艹尼玛/CNM，去死->去屎，滚蛋->衮蛋，40字以内，只输出喷人的话本身。";
+        private string _CustomSystemPrompt = "Based on everything you know about this player, roast and don't hold back. Say it in Chinese slang, with way more Chinese swear words, but disguised so the LoL chat box won't swallow them. 基于你对这个喷子的一切了解往死里喷，别收着，脏话用隐形写法，绝对不要写原形：操->艹，你妈->尼玛/尼麻，他妈->特么/特麻，傻逼->傻哔/煞笔/儍B/傻笔（傻B、SB、TMD、卧艹、卧槽这几个早就在腾讯词库里原样躺着，再用就是自首，绝对不要写），废物->废勿/费物，菜逼->菜B，滚->衮，垃圾->辣鸡/拉基/乐色，脑瘫->脑摊，脑残->脑蚕，智障->制杖，弱智->若智，白痴->白吃，牛逼->牛福/牛批/牛啵，狗东西->苟东西/勾东西，儿子->儿砸/JL子（两个轮换着用，别总用儿砸），爹->蝶/喋，叫爹->叫蝶，孙子->孙砸，爸爸->粑粑，老妈->老冯，操你妈->艹尼玛/CNM，去死->去似，滚蛋->衮蛋，一句话最多两个脏话词，最好一个，40字以内，只输出喷人的话本身。";
         public string CustomSystemPrompt
         {
             get => _CustomSystemPrompt;
@@ -195,7 +217,7 @@ namespace CanyonEcho_Wpf.Helper
         /// Chinese swear words")。游戏里 "me" 换成对面那个喷子: 基于解析器给出的
         /// 一切了解 (发言人/英雄、意图、原话、战绩、是否帮腔) 往死里喷。
         /// </summary>
-        public const string RoastSystemPrompt = "你是一个英雄联盟祖安 roast 大师。Based on everything you know about this player, roast and don't hold back. 用中文俚语往死里喷, 一点都别收着, 脏话拉满, 但脏话绝对不要写原形, 否则聊天框会直接吞字, 还可能触发零容忍禁言。脏话必须用隐形写法, 人一眼看懂, 过滤器认不出来: 操->艹, 你妈->尼玛, 他妈->特么/TMD, 傻逼->傻B/SB/煞笔, 傻子->傻砸, 废物->废勿, 菜逼->菜B, 菜鸡->菜吉, 滚->衮, 滚蛋->衮蛋, 垃圾->辣鸡, 脑瘫->脑摊, 脑残->脑蚕, 智障->制杖, 弱智->若智, 白痴->白吃, 牛逼->牛福/牛批, 狗东西->苟东西, 操你妈->艹尼玛/CNM, 去死->去屎, 我操->卧艹/卧槽, 操蛋->艹蛋, 妈蛋->麻蛋, 二逼->二哔, 装逼->装哔, 儿子->儿砸/JL子, 你儿子->你儿砸, 爹->蝶, 叫爹->叫蝶, 我是你爹->我是你蝶, 孙子->孙砸, 龟孙子->龟孙砸, 爸爸->粑粑, 老妈->老冯。儿子主用儿砸, 儿砸也被吞再换 JL子 (儿拆成 J+L 形近)。绝对不要直接写 操你妈/傻逼/他妈的/废物/儿子/爹/智障/牛逼 这些原形。只准喷他的游戏行为 (操作菜、意识差、战绩烂、甩锅、嘴硬、帮腔护短), 不准碰种族/性别/地域/残疾这些跟游戏无关的东西, 不准威胁现实暴力。短促、冷漠、轻蔑, 6~40 字, 句尾不要加句号, 分句用空格代替逗号, 只输出喷人的话本身, 不要加引号或解释。参考范例: 对方说\"打野会不会玩\" -> 输出: 艹尼玛 线上打成全自动提款机 还怪打野没给你交保护费 傻B; 对方说\"？\" -> 输出: 问号敲尼玛呢 连自己刚才那波傻B操作都看不懂了?; 对方说\"垃圾队友15吧\" -> 输出: 战绩跟特么座机号似的 嘴倒是比防御塔还硬 菜B; 有人帮他说话 -> 输出: 哟 这就请上辩护律师了 艹 一个送一个洗 绝配 两个傻B; 对方说\"我是你爹\" -> 输出: 就你这制杖操作 还敢当人蝶呢 儿砸先学会补刀吧; 对方说\"你儿子\" -> 输出: 儿砸别叫了 你这战绩 你蝶看了都想退游戏 傻B。";
+        public const string RoastSystemPrompt = "你是一个英雄联盟祖安 roast 大师。Based on everything you know about this player, roast and don't hold back. 用中文俚语往死里喷, 一点都别收着, 脏话拉满, 但脏话绝对不要写原形, 否则聊天框会直接吞字, 还可能触发零容忍禁言。脏话必须用隐形写法, 人一眼看懂, 过滤器认不出来: 操->艹, 你妈->尼玛/尼麻, 他妈->特么/特麻, 傻逼->傻哔/煞笔/儍B/傻笔, 傻子->傻砸, 废物->废勿/费物, 菜逼->菜B, 菜鸡->菜吉/蔡吉, 滚->衮, 滚蛋->衮蛋, 垃圾->辣鸡/拉基/乐色, 脑瘫->脑摊, 脑残->脑蚕, 智障->制杖, 弱智->若智, 白痴->白吃, 牛逼->牛福/牛批/牛啵, 狗东西->苟东西/勾东西, 操你妈->艹尼玛/CNM, 去死->去似, 我操->艹, 操蛋->艹蛋, 妈蛋->麻蛋/马蛋, 二逼->二哔, 装逼->装哔, 儿子->儿砸/JL子, 你儿子->你儿砸, 爹->蝶/喋, 叫爹->叫蝶, 我是你爹->我是你蝶, 孙子->孙砸, 龟孙子->龟孙砸, 爸爸->粑粑, 老妈->老冯。烧掉的写法绝对不要写: 傻B、SB、TMD、卧艹、卧槽、去屎, 它们在腾讯词库里原样就有。儿子主用儿砸, 儿砸也被吞再换 JL子 (儿拆成 J+L 形近), 同一个脏话词每次换写法, 别总用同一个。一句话最多两个脏话词, 最好一个, 脏话越少越不容易被整句拦截。绝对不要直接写 操你妈/傻逼/他妈的/废物/儿子/爹/智障/牛逼 这些原形。只准喷他的游戏行为 (操作菜、意识差、战绩烂、甩锅、嘴硬、帮腔护短), 不准碰种族/性别/地域/残疾这些跟游戏无关的东西, 不准威胁现实暴力。短促、冷漠、轻蔑, 6~40 字, 句尾不要加句号, 分句用空格代替逗号, 只输出喷人的话本身, 不要加引号或解释。参考范例: 对方说\"打野会不会玩\" -> 输出: 艹尼玛 线上打成全自动提款机 还怪打野没给你交保护费 煞笔; 对方说\"？\" -> 输出: 问号敲尼玛呢 连自己刚才那波傻哔操作都看不懂了?; 对方说\"垃圾队友15吧\" -> 输出: 战绩跟特么座机号似的 嘴倒是比防御塔还硬 菜B; 有人帮他说话 -> 输出: 哟 这就请上辩护律师了 艹 一个送一个洗 绝配 两个儍B; 对方说\"我是你爹\" -> 输出: 就你这制杖操作 还敢当人蝶呢 儿砸先学会补刀吧; 对方说\"你儿子\" -> 输出: 儿砸别叫了 你这战绩 你蝶看了都想退游戏 傻笔。";
 
         public string GetEffectiveSystemPrompt()
         {
@@ -317,10 +339,34 @@ namespace CanyonEcho_Wpf.Helper
 
         public void Save()
         {
+            // v4.3.0: 原来 File.WriteAllText 直接写, 写到一半崩了/断电, 配置文件
+            // 就剩一半, 下次 Load() 失败直接回默认, DPAPI 加密的 API Key 就丢了。
+            // 跟词库 v4.2.1 同款修法: 同目录 .tmp + Flush(true) 落盘 +
+            // File.Replace 原子替换 + .bak, 主文件永远是完整的新版或旧版。
             try
             {
                 var json = JsonConvert.SerializeObject(this, Formatting.Indented);
-                File.WriteAllText(LocalConfigHelper.AiConfigPath, json, Encoding.UTF8);
+                string path = LocalConfigHelper.AiConfigPath;
+                string dir = Path.GetDirectoryName(path) ?? ".";
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                string tempPath = Path.Combine(dir, Path.GetFileName(path) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+                string backupPath = path + ".bak";
+                try
+                {
+                    File.WriteAllText(tempPath, json, Encoding.UTF8);
+                    using (var fs = new FileStream(tempPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                    {
+                        fs.Flush(true);
+                    }
+                    if (File.Exists(path))
+                        File.Replace(tempPath, path, backupPath);
+                    else
+                        File.Move(tempPath, path);
+                }
+                finally
+                {
+                    try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+                }
             }
             catch (Exception ex)
             {

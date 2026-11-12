@@ -25,6 +25,9 @@ namespace CanyonEcho_Wpf.ViewModels
         private InGameOverlayWindow _overlayWindow;
         private bool _isProcessingOcr;
         private DateTime _lastTriggerTime = DateTime.MinValue;
+        // v4.3.0: OCR 自动 roast 限流器, 一局最多 12 条、两次之间至少 5 秒
+        // (AiConfig 可调)。手动 F2/F3/F6 不走这里。
+        private readonly RoastLimiter _roastLimiter = new RoastLimiter();
 
         public WordsLibrary Library { get; set; }
         public AiConfig AiSetting { get; set; }
@@ -229,9 +232,34 @@ namespace CanyonEcho_Wpf.ViewModels
             }
             catch (Exception e)
             {
-                e.Show("读取词库失败！");
-                File.Delete(LocalConfigHelper.WordsLibraryPath);
-                Application.Current.Shutdown();
+                // v4.3.0: 原来读坏就 File.Delete 删用户词库再 Shutdown, 词库
+                // 是用户攒了很久的东西, 删了就找不回来了。改成: 坏文件改名
+                // 成 .corrupt-时间戳 留着给用户手动抢救, 再从内置清单重建
+                // 一个默认词库继续跑, 程序不退出。
+                LogHelper.Log.Error("读取词库失败, 坏文件已改名保留, 正在用内置默认词库重建", e);
+                try
+                {
+                    string corruptPath = LocalConfigHelper.WordsLibraryPath
+                        + ".corrupt-" + DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                    if (File.Exists(LocalConfigHelper.WordsLibraryPath))
+                        File.Move(LocalConfigHelper.WordsLibraryPath, corruptPath);
+                }
+                catch (Exception moveEx)
+                {
+                    LogHelper.Log.Warn("损坏词库改名失败", moveEx);
+                }
+                try
+                {
+                    Library = JsonHelper.DeserializeManifestJson<WordsLibrary>("wordsLibrary.json");
+                    EnsureSnarkyCategoryExists();
+                    JsonHelper.SerializeWordsLibrary(Library);
+                    MessageHelper.Info("词库文件已损坏, 坏文件已改名保留 (.corrupt-时间戳), 已用内置默认词库重建, 你的旧词条可以从坏文件里手动找回。");
+                }
+                catch (Exception rebuildEx)
+                {
+                    rebuildEx.Show("词库损坏且内置默认词库也读不出来！");
+                    Application.Current.Shutdown();
+                }
             }
         }
 
@@ -562,6 +590,18 @@ namespace CanyonEcho_Wpf.ViewModels
 
             if (AiSetting == null || AiSetting.AutoSendToGame)
             {
+                // v4.3.0: roast 模式才限流, 干净模式不烧 API 也不招举报, 不限。
+                // 超上限/冷却中就不发, 只在界面上写原因, 免得一局喷太多被禁言。
+                if (AiSetting != null && AiSetting.UseRoastMode)
+                {
+                    _roastLimiter.CooldownSeconds = AiSetting.RoastCooldownSeconds;
+                    _roastLimiter.MaxPerMatch = AiSetting.RoastMaxPerMatch;
+                    if (!_roastLimiter.TryAllowRoast(DateTime.Now, out string denyReason))
+                    {
+                        LastAiReply = $"[限流未发送] {denyReason} (已生成但没发: {reply})";
+                        return;
+                    }
+                }
                 await Task.Delay(100);
                 await SendWordToGameAsync(reply);
             }

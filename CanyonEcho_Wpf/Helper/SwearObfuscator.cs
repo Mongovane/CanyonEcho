@@ -59,7 +59,7 @@ namespace CanyonEcho_Wpf.Helper
                 ["叫爸爸"] = "叫粑粑",
                 ["他妈的"] = "特么的",
                 ["操蛋"] = "艹蛋",
-                ["我操"] = "卧艹",
+                ["我操"] = "艹",
                 ["你妈"] = "尼玛",
                 ["他妈"] = "特么",
                 ["死妈"] = "屎妈",
@@ -70,9 +70,9 @@ namespace CanyonEcho_Wpf.Helper
                 ["孙子"] = "孙砸",
                 ["孝子"] = "孝砸",
                 ["爸爸"] = "粑粑",
-                ["傻逼"] = "傻B",
-                ["傻屄"] = "傻B",
-                ["傻比"] = "傻B",
+                ["傻逼"] = "傻哔",
+                ["傻屄"] = "傻哔",
+                ["傻比"] = "傻哔",
                 ["傻子"] = "傻砸",
                 ["傻X"] = "傻叉",
                 ["二逼"] = "二哔",
@@ -91,14 +91,37 @@ namespace CanyonEcho_Wpf.Helper
                 ["下贱"] = "下践",
                 ["婊子"] = "表子",
                 ["滚蛋"] = "衮蛋",
-                ["去死"] = "去屎",
+                ["去死"] = "去似",
                 ["妈蛋"] = "麻蛋",
                 ["垃圾"] = "辣鸡",
                 ["爹"] = "蝶",
                 ["屌"] = "吊",
                 ["操"] = "艹",
                 ["滚"] = "衮",
+                // v4.3.0: 下面 6 个是 "烧掉的隐形写法" 的清理映射, LLM 吐出来也要再洗一次。
+                // 旧腾讯词库 (2022, 5168 行) 里原样就有: 傻B / SB / TMD / 卧艹 / 卧槽 / 去屎,
+                // 模板和提示词里已经删了, 但 LLM 不听话时还可能吐, 所以 Obfuscate() 兜底再转一次。
+                ["傻B"] = "傻哔",
+                ["SB"] = "煞笔",
+                ["TMD"] = "特么",
+                ["卧艹"] = "艹",
+                ["卧槽"] = "艹",
+                ["去屎"] = "去似",
             };
+
+        // v4.3.0: 原来每次 Obfuscate()/ContainsObviousSwear() 都要对 50 个映射
+        // 排一次序, 零宽扫描里更是每个字符都排一次 (O(n*m log m)),
+        // 一句话 80 字就要排 80 次。字典是只读不变的, 排一次存起来就够了。
+        private static readonly KeyValuePair<string, string>[] SortedObfuscations =
+            Obfuscations.OrderByDescending(kv => kv.Key.Length).ToArray();
+        private static readonly string[] SortedDisguisedWords = new[]
+            { "艹尼玛", "艹泥马", "我是你蝶", "去尼玛", "尼玛B", "尼玛的", "你儿砸",
+              "龟孙砸", "叫粑粑", "特么的", "艹蛋", "卧艹", "尼玛", "特么", "屎妈", "老冯", "尼妹",
+              "叫蝶", "儿砸", "孙砸", "孝砸", "粑粑", "傻B", "傻砸", "傻叉", "二哔", "装哔", "牛福",
+              "菜B", "菜吉", "蔡吉", "废勿", "费物", "脑摊", "脑蚕", "制杖", "若智", "白吃", "苟东西",
+              "勾东西", "践人", "下践", "表子", "衮蛋", "去似", "麻蛋", "马蛋", "辣鸡", "拉基", "乐色",
+              "傻哔", "煞笔", "儍B", "傻笔", "尼麻", "特麻", "牛啵", "喋" }
+            .OrderByDescending(w => w.Length).ToArray();
 
         /// <summary>原形脏话表, 仅用于测试/自检, 不要拿它去拼句子。</summary>
         public static readonly string[] ObviousSwears =
@@ -109,13 +132,17 @@ namespace CanyonEcho_Wpf.Helper
               "婊子", "滚蛋", "去死", "妈蛋", "垃圾", "爹", "屌", "操", "滚" };
 
         /// <summary>隐形后的脏话写法, 模板和 LLM 输出里应该只出现这些。</summary>
+        // v4.3.0: 傻B / SB / TMD / 卧艹 / 卧槽 / 去屎 已从这里删掉, 它们在旧腾讯词库
+        // 里原样就有, 再用就是自首。新加: 傻哔 / 煞笔 / 儍B / 傻笔 / 尼麻 / 特麻 /
+        // 乐色 / 费物 / 蔡吉 / 牛啵 / 去似 / 勾东西 / 喋 (全都不在旧词库里, 儍B 还是
+        // 台服 2024 实测绕过零容忍的异体字写法, 见 VERIFICATION.md 第 12 节)。
         public static readonly string[] DisguisedSwears =
-            { "艹", "艹尼玛", "艹泥马", "艹蛋", "卧艹", "卧槽", "尼玛", "尼玛B", "特么", "特么的",
-              "傻B", "SB", "菜B", "废勿", "衮", "衮蛋", "辣鸡", "脑摊", "脑蚕", "制杖", "若智",
-              "白吃", "TMD", "CNM", "NMSL", "煞笔", "儿砸", "JL子", "蝶", "粑粑", "孙砸", "龟孙砸",
-              "孝砸", "你儿砸", "我是你蝶", "叫蝶", "叫粑粑", "牛福", "牛批", "牛B", "二哔", "装哔",
-              "菜吉", "傻砸", "傻叉", "苟东西", "践人", "表子", "去屎", "麻蛋", "屎妈", "老冯",
-              "尼妹", "吊", "拉基", "费物" };
+            { "艹", "艹尼玛", "艹泥马", "艹蛋", "尼玛", "尼玛B", "尼麻", "特么", "特么的", "特麻",
+              "傻哔", "煞笔", "儍B", "傻笔", "菜B", "废勿", "衮", "衮蛋", "辣鸡", "脑摊", "脑蚕",
+              "制杖", "若智", "白吃", "CNM", "NMSL", "儿砸", "JL子", "蝶", "喋", "粑粑", "孙砸", "龟孙砸",
+              "孝砸", "你儿砸", "我是你蝶", "叫蝶", "叫粑粑", "牛福", "牛批", "牛啵", "牛B", "二哔", "装哔",
+              "菜吉", "蔡吉", "傻砸", "傻叉", "苟东西", "勾东西", "践人", "表子", "去似", "麻蛋", "马蛋",
+              "屎妈", "老冯", "尼妹", "吊", "拉基", "费物", "乐色" };
 
         /// <summary>
         /// "儿子" 的字母拆字备选写法。主映射是儿砸, JL子是备胎: "儿" 拆成 J + L
@@ -123,6 +150,60 @@ namespace CanyonEcho_Wpf.Helper
         /// LLM 在儿砸也被吞的时候可以改用 JL子。
         /// </summary>
         public const string SonVisualVariant = "JL子";
+
+        /// <summary>
+        /// v4.3.0 变体轮换表: 同一个脏话每次发换一种写法, 别总用同一个。
+        /// 固定 1 对 1 的映射用久了就是给过滤器送靶子, 儿砸天天发, 迟早也被收进词库。
+        /// 第一个是默认值 (harness 的 python 镜像按第一个检查), 后面是轮换备选。
+        /// 儍B (儍 U+511A) 是 "傻" 的异体字, 台服 2024-09 实测绕过零容忍 (Dcard),
+        /// 国服现在是否还管用没测过, 所以只占 1/4 的轮换权重, 不当主力。
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, string[]> ObfuscationVariants =
+            new Dictionary<string, string[]>
+            {
+                ["傻逼"] = new[] { "傻哔", "煞笔", "儍B", "傻笔" },
+                ["你妈"] = new[] { "尼玛", "尼麻" },
+                ["他妈"] = new[] { "特么", "特麻" },
+                ["牛逼"] = new[] { "牛福", "牛批", "牛啵" },
+                ["垃圾"] = new[] { "辣鸡", "拉基", "乐色" },
+                ["废物"] = new[] { "废勿", "费物" },
+                ["菜鸡"] = new[] { "菜吉", "蔡吉" },
+                ["狗东西"] = new[] { "苟东西", "勾东西" },
+                ["妈蛋"] = new[] { "麻蛋", "马蛋" },
+                ["儿子"] = new[] { "儿砸", "JL子" },
+                ["爹"] = new[] { "蝶", "喋" },
+            };
+
+        private static readonly Random _variantRng = new Random();
+        private static readonly object _variantRngLock = new object();
+
+        private static string ResolveVariant(string key, string defaultValue)
+        {
+            if (!ObfuscationVariants.TryGetValue(key, out var variants) || variants.Length <= 1)
+                return defaultValue;
+            lock (_variantRngLock)
+            {
+                return variants[_variantRng.Next(variants.Length)];
+            }
+        }
+
+        /// <summary>
+        /// v4.3.0 零宽轮换: 原来只插 U+200B, 现代过滤器 (go-sensitive-word 这类)
+        /// 的标准动作就是先剥掉 U+200B/U+200C/U+200D 再匹配, 只用一种等于裸奔。
+        /// 改成每次随机挑一个: U+200B / U+200C / U+200D / U+2060, 字节形态每次都不一样。
+        /// 老实说: 只要过滤器先剥零宽再匹配, 四种全会被剥掉, 这招只能对付不剥零宽
+        /// 的那类过滤器, 不能当主力, 主力是上面的变体轮换 + 一句话最多一个脏话词。
+        /// U+FEFF 不用, 它在首尾会被 trim 掉。
+        /// </summary>
+        public static readonly char[] ZeroWidthChars = { '\u200B', '\u200C', '\u200D', '\u2060' };
+
+        private static char PickZeroWidthChar()
+        {
+            lock (_variantRngLock)
+            {
+                return ZeroWidthChars[_variantRng.Next(ZeroWidthChars.Length)];
+            }
+        }
 
         /// <summary>正常词里含 "操/滚" 但不是脏话, 替换前要先占位保护, 免得误伤。</summary>
         public static readonly string[] ProtectedNormalWords =
@@ -137,7 +218,7 @@ namespace CanyonEcho_Wpf.Helper
             foreach (var w in ProtectedNormalWords)
                 probe = probe.Replace(w, "\uE000");
             // 长词先查, 免得 "操你妈" 被单字 "操" 抢先但逻辑一样, 这里只是为了可读性。
-            foreach (var swear in Obfuscations.Keys.OrderByDescending(k => k.Length))
+            foreach (var swear in SortedObfuscations.Select(kv => kv.Key))
             {
                 if (swear.Length == 1)
                 {
@@ -171,9 +252,10 @@ namespace CanyonEcho_Wpf.Helper
                 result = result.Replace(w, holder);
             }
 
-            foreach (var kv in Obfuscations.OrderByDescending(kv => kv.Key.Length))
+            foreach (var kv in SortedObfuscations)
             {
-                result = result.Replace(kv.Key, kv.Value);
+                // v4.3.0: 有轮换表的 key 每次随机挑一种写法, 没表的走默认映射。
+                result = result.Replace(kv.Key, ResolveVariant(kv.Key, kv.Value));
             }
 
             foreach (var kv in placeholders)
@@ -184,16 +266,11 @@ namespace CanyonEcho_Wpf.Helper
             // 只在隐形脏话词内部插零宽, 不动其他字。
             var sb = new StringBuilder(result.Length + 8);
             // 隐形词按长度降序, 逐词扫描, 命中就插零宽。单字词 (艹/蝶/吊/衮) 没地方插, 原样。
-            var disguisedWords = new[] { "艹尼玛", "艹泥马", "我是你蝶", "去尼玛", "尼玛B", "尼玛的", "你儿砸",
-                "龟孙砸", "叫粑粑", "特么的", "艹蛋", "卧艹", "尼玛", "特么", "屎妈", "老冯", "尼妹",
-                "叫蝶", "儿砸", "孙砸", "孝砸", "粑粑", "傻B", "傻砸", "傻叉", "二哔", "装哔", "牛福",
-                "菜B", "菜吉", "废勿", "脑摊", "脑蚕", "制杖", "若智", "白吃", "苟东西", "践人",
-                "下践", "表子", "衮蛋", "去屎", "麻蛋", "辣鸡" };
             int i = 0;
             while (i < result.Length)
             {
                 string hit = null;
-                foreach (var w in disguisedWords.OrderByDescending(w => w.Length))
+                foreach (var w in SortedDisguisedWords)
                 {
                     if (i + w.Length <= result.Length && result.Substring(i, w.Length) == w)
                     {
@@ -219,11 +296,12 @@ namespace CanyonEcho_Wpf.Helper
                 }
                 else
                 {
-                    // 词内每两个字之间插一个零宽, 如 傻B -> 傻\u200BB, 儿砸 -> 儿\u200B砸
+                    // 词内每两个字之间插一个零宽, 如 傻哔 -> 傻\u200B哔, 儿砸 -> 儿\u200B砸。
+                    // v4.3.0: 零宽字符每次随机挑 (U+200B/U+200C/U+200D/U+2060), 别总用同一个。
                     for (int j = 0; j < hit.Length; j++)
                     {
                         sb.Append(hit[j]);
-                        if (j < hit.Length - 1) sb.Append(ZeroWidthSpace);
+                        if (j < hit.Length - 1) sb.Append(PickZeroWidthChar());
                     }
                     i += hit.Length;
                 }

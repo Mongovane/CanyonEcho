@@ -54,6 +54,7 @@
 		<EmbeddedResource Include="Assets\log4net.config" />
 		<EmbeddedResource Include="Assets\Url.json" />
 		<EmbeddedResource Include="Assets\wordsLibrary.json" />
+		<EmbeddedResource Include="Assets\zuanbotLibrary.json" />
 	</ItemGroup>
 
 	<ItemGroup>
