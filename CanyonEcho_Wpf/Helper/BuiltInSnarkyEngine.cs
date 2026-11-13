@@ -15,6 +15,29 @@ namespace CanyonEcho_Wpf.Helper
         // 数都走带锁的 Next/NextDouble, 绝不直接碰 _rng。
         private static readonly object _rngLock = new object();
         private static int RngNext(int maxValue) { lock (_rngLock) { return _rng.Next(maxValue); } }
+        private static readonly Queue<string> _recentRoastHistory = new Queue<string>();
+        private static readonly object _historyLock = new object();
+        private static string PickNonRepeating(string[] pool)
+        {
+            if (pool == null || pool.Length == 0) return "";
+            lock (_historyLock)
+            {
+                for (int attempt = 0; attempt < Math.Min(pool.Length * 2, 12); attempt++)
+                {
+                    string candidate = pool[RngNext(pool.Length)];
+                    if (!_recentRoastHistory.Contains(candidate))
+                    {
+                        _recentRoastHistory.Enqueue(candidate);
+                        while (_recentRoastHistory.Count > 15) _recentRoastHistory.Dequeue();
+                        return candidate;
+                    }
+                }
+                string fallback = pool[RngNext(pool.Length)];
+                _recentRoastHistory.Enqueue(fallback);
+                while (_recentRoastHistory.Count > 15) _recentRoastHistory.Dequeue();
+                return fallback;
+            }
+        }
         private static double RngNextDouble() { lock (_rngLock) { return _rng.NextDouble(); } }
 
         private static readonly Dictionary<string, string[]> IntentTemplates = new Dictionary<string, string[]>
@@ -130,7 +153,9 @@ namespace CanyonEcho_Wpf.Helper
                 "没事 你们俩继续互相安慰 出了这把也没人夸你们了 菜B",
                 "儿砸护蝶是吧 你俩一个送一个洗 绝配",
                 "JL子这么急着帮你蝶洗是吧 一个送一个开发布会",
-                "孙砸别叫了 你蝶那波操作看了都摇头"
+                "孙砸别叫了 你蝶那波操作看了都摇头",
+                "两个B崽子在这抱团取暖呢 艹 一个送一个舔 真是绝配",
+                "俩初生东西还互相护上了 苟叫得比防御塔还响"
             },
             ["甩锅打野"] = new[]
             {
@@ -144,7 +169,8 @@ namespace CanyonEcho_Wpf.Helper
                 "要不打野把惩戒交你身上 看看能不能激活一下你的脑子 儍B",
                 "儿砸 线上打成提款机 还怪打野没交保护费 制杖",
                 "叫蝶也没用 你蝶来了也救不了你这废勿",
-                "牛福啊 打野没来你就送 来了你还送 菜B"
+                "牛福啊 打野没来你就送 来了你还送 菜B",
+                "B崽子自己对线打成提款机 还在这苟叫甩锅打野 脑一血"
             },
             ["质疑操作"] = new[]
             {
@@ -160,7 +186,9 @@ namespace CanyonEcho_Wpf.Helper
                 "代练刚下号是吧 前两分钟看着还没这么抽象 废勿",
                 "制杖操作看得我直乐 艹 闪现迁坟都比你准",
                 "白吃啊 这波操作 狗看了都摇头 傻哔",
-                "苟东西 打字挺凶 操作跟屎一样 辣鸡"
+                "苟东西 打字挺凶 操作跟屎一样 辣鸡",
+                "什么初生操作 看得你蝶直犯脑一血 煞笔",
+                "B崽子这波连招纯纯给人当提款机 艹 玩不明白就衮"
             },
             ["战绩嘲讽"] = new[]
             {
@@ -174,7 +202,8 @@ namespace CanyonEcho_Wpf.Helper
                 "对面杀你都嫌不值钱 连大招都舍不得交了 菜B",
                 "战绩跟你蝶电话号似的 一长串零 制杖",
                 "0-8的战绩还敢叫 儿砸你看看你这制杖操作",
-                "牛福 菜成这样还敢喷人 辣鸡 先看看面板吧"
+                "牛福 菜成这样还敢喷人 辣鸡 先看看面板吧",
+                "这战绩跟特么心电图平了一样 B崽子还有脸在公屏苟叫"
             },
             ["消极投降"] = new[]
             {
@@ -185,7 +214,8 @@ namespace CanyonEcho_Wpf.Helper
                 "黑白屏看的比谁都久 指导起队友来倒是头头是道 艹",
                 "别急着投啊 大家还没看够你的下饭集锦呢 儍B",
                 "15投是吧 儿砸你倒是跑得快 制杖",
-                "投降投得比你送得还快 傻哔 衮蛋"
+                "投降投得比你送得还快 傻哔 衮蛋",
+                "自己打穿了就点投降 孤J一个还想拖着四个正常人下水 煞笔"
             },
             ["问号嘲讽"] = new[]
             {
@@ -195,7 +225,8 @@ namespace CanyonEcho_Wpf.Helper
                 "怎么一直在打问号 是找不到回泉水的路了吗 菜B",
                 "就这 艹 我还以为多狠呢 傻笔",
                 "问号发给谁看呢 儿砸 你蝶教你这么玩的",
-                "问号敲尼玛呢 制杖 连自己操作都看不懂"
+                "问号敲尼玛呢 制杖 连自己操作都看不懂",
+                "敲你蝶个问号呢 B崽子 自己菜成那样心里没点P数吗"
             },
             ["祖安问候"] = new[]
             {
@@ -207,7 +238,8 @@ namespace CanyonEcho_Wpf.Helper
                 "别气坏了身体 艹 医药费可比你这把打的输出贵多了",
                 "对线唯唯诺诺 打字重拳出击 键盘快拍碎了吧 煞笔",
                 "红温了是吧 艹 脸比你战绩还红 制杖",
-                "操作打不过就急眼了是吧 菜B 汗流浃背了 儍B"
+                "操作打不过就急眼了是吧 菜B 汗流浃背了 儍B",
+                "少在这放P话了 王八旦 现实里是不是也这么嘴硬 煞笔"
             },
             ["通用嘲讽"] = new[]
             {
@@ -221,7 +253,8 @@ namespace CanyonEcho_Wpf.Helper
                 "去玩云顶吧 那个不用自己按技能 废勿",
                 "儿砸 别打字了 你蝶看了都想退游戏",
                 "制杖一个 操作菜嘴还硬 菜B",
-                "牛福啊 菜成这样还敢喷人 辣鸡"
+                "牛福啊 菜成这样还敢喷人 辣鸡",
+                "纯血牛麻一个 还敢在这苟叫 艹 赶紧卸载吧 废勿"
             }
         };
 
@@ -264,7 +297,15 @@ namespace CanyonEcho_Wpf.Helper
             // 2. 意图分类匹配
             if (templatesByIntent.TryGetValue(category, out var templates) && templates.Length > 0)
             {
-                string picked = templates[RngNext(templates.Length)];
+                string picked = useRoastMode ? PickNonRepeating(templates) : templates[RngNext(templates.Length)];
+                var mp = parseResult?.MatchedPlayer;
+                if (useRoastMode && mp != null && mp.Deaths >= 4 && RngNextDouble() < 0.45)
+                {
+                    string kda = $"{mp.Kills}-{mp.Deaths}-{mp.Assists}";
+                    string deadNote = mp.IsDead ? "躺黑白屏里" : "顶着";
+                    string kdaLine = $"{mp.ChampionName} {deadNote}{kda}的战绩还敢在这苟叫 艹 真是煞笔";
+                    if (kdaLine.Length <= 48) return kdaLine;
+                }
 
                 // 带上英雄名点名嘲讽（不加“哥哥”等AI感前缀，直接用空格点名，如 "亚索 打字这么利索 刚才闪现怎么按不出来"）
                 if (!string.IsNullOrWhiteSpace(speaker) && speaker.Length <= 6 && RngNextDouble() < 0.5)

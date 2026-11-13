@@ -1,8 +1,8 @@
 ﻿{
-  "Url": "https://github.com/Mongovane/CanyonEcho/releases/download/v4.3.0/峡谷回音.exe",
+  "Url": "https://github.com/Mongovane/CanyonEcho/releases/download/v4.4.0/峡谷回音.exe",
   "FileName": "峡谷回音.exe",
-  "VersionName": "4.3.0",
-  "Description": "v4.3.0: 脏话升级 (烧掉的6个词换掉, 变体轮换, 零宽轮换, 模板每条最多2个脏话词, 祖安语录外站词库 min 655条) + 修 ,, 编译错误 + Random线程安全 + SwearObfuscator预排序 + Roast限流 + LLM重试 + AiConfig原子保存 + 词库损坏不删档 + 80ms改实话; 详见 VERIFICATION.md",
+  "VersionName": "4.4.0",
+  "Description": "v4.4.0: 升级 Roast 提示词 (中文俚语+大量隐形脏话), LiveClientDataService 注入实时 KDA/补刀/阵亡状态到 LLM 与内置引擎, SwearObfuscator 新增 10 组俚语脏话隐形映射与变体轮换, BuiltInSnarkyEngine 新增 LRU 防重队列与 KDA 动态处刑",
   "Sha256": "",
-  "Date": "2026-11-12T00:00:00"
+  "Date": "2026-11-13T00:00:00"
 }

@@ -1,4 +1,4 @@
-﻿# 峡谷回音 CanyonEcho v4.3.0 (原 ZuAnBot 深度重构与安全升级版)
+﻿# 峡谷回音 CanyonEcho v4.4.0 (原 ZuAnBot 深度重构与安全升级版)
 
 > **峡谷回音 (`CanyonEcho`)** 是基于原版 `ZuAnBot` 全面重构升级的 **英雄联盟聊天框 OCR 智能识别 + AI/内置高情商阴阳怪气反击助手**。
 > 本次 v4.2.1 重构在 **100% 保留原有功能** 的基础上，新增了 **双模式聊天框 OCR 识别（`F4` 手动框选 / `F5` 自动静默识别）**、**LLM 大模型 + 内置离线上下文感知双引擎反击**、**外部安全鼠标穿透游戏内悬浮窗 HUD (`F7`)**、**极速剪贴板防吞字发送**、**单行零宽字符防屏蔽 (`F8`)**，并修复了原版 6 项安全与稳定性漏洞。
@@ -9,6 +9,11 @@
 
 ---
 
+
+## 🔥 v4.4.0 Roast 提示词与实时战绩上下文全量升级
+
+- **实时战绩上下文注入 (`LiveClientDataService` / `LolChatParser` / `AiReplyService`)**: `LolPlayerInfo` 新增 `Kills`、`Deaths`、`Assists`、`CreepScore`、`Level`、`IsDead` 字段（缓存 TTL 由 15s 缩短为 5s），`AiReplyService` 与 `BuiltInSnarkyEngine` 自动读取发言者的实时 KDA 与黑屏阵亡状态，真正做到「基于对这名玩家的一切了解往死里喷」。
+- **Roast 提示词与隐形词库扩充 (`AiConfig` / `SwearObfuscator` / `BuiltInSnarkyEngine`)**: 升级 `RoastSystemPrompt` 与 `CustomSystemPrompt`，新增 `逼崽子->B崽子/哔崽子`、`狗篮子->苟篮子/勾篮子`、`王八蛋->王八旦/忘八蛋`、`狗叫->苟叫/勾叫`、`畜生->初生/畜牲`、`脑溢血->脑一血`、`孤儿->孤J`、`鸡巴->JB`、`屁话->P话` 等俚语脏话隐形映射与变体轮换，并扩充内置 `RoastTemplates` 句库与 15 条 LRU 防重队列。
 
 ## 🔥 v4.3.0 脏话升级 + 祖安语录外站词库 + 五个 bug 修复 (v4.2.1) + 粗口 Roast 骂人模式 (默认开)
 

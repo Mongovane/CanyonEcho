@@ -15,6 +15,20 @@ namespace CanyonEcho_Wpf.Helper
         public string Position { get; set; } = "";
         public bool IsSelf { get; set; }
         public bool IsTeammate { get; set; }
+        public int Kills { get; set; }
+        public int Deaths { get; set; }
+        public int Assists { get; set; }
+        public int CreepScore { get; set; }
+        public int Level { get; set; }
+        public bool IsDead { get; set; }
+
+        public string FormatStatsSummary()
+        {
+            string side = IsSelf ? "自己" : (IsTeammate ? "队友" : "敌方");
+            string pos = string.IsNullOrWhiteSpace(Position) ? "" : $" {Position}";
+            string deadTag = IsDead ? " 阵亡黑屏中" : "";
+            return $"{side}{pos} 英雄:{ChampionName} 战绩:{Kills}-{Deaths}-{Assists} 补刀:{CreepScore} 等级:{Level}{deadTag}";
+        }
     }
 
     /// <summary>
@@ -52,7 +66,7 @@ namespace CanyonEcho_Wpf.Helper
 
         public static async Task<List<LolPlayerInfo>> GetCurrentMatchRosterAsync()
         {
-            if ((DateTime.Now - _lastFetchTime).TotalSeconds < 15 && _cachedRoster.Count > 0)
+            if ((DateTime.Now - _lastFetchTime).TotalSeconds < 5 && _cachedRoster.Count > 0)
             {
                 return _cachedRoster;
             }
@@ -83,13 +97,27 @@ namespace CanyonEcho_Wpf.Helper
                                    shortName.Equals(activeName, StringComparison.OrdinalIgnoreCase));
                     if (isSelf) myTeam = team;
 
+                    var scores = item["scores"];
+                    int kills = scores?["kills"]?.Value<int?>() ?? 0;
+                    int deaths = scores?["deaths"]?.Value<int?>() ?? 0;
+                    int assists = scores?["assists"]?.Value<int?>() ?? 0;
+                    int cs = scores?["creepScore"]?.Value<int?>() ?? 0;
+                    int level = item["level"]?.Value<int?>() ?? 0;
+                    bool isDead = item["isDead"]?.Value<bool?>() ?? false;
+
                     roster.Add(new LolPlayerInfo
                     {
                         SummonerName = shortName,
                         ChampionName = cName,
                         Team = team,
                         Position = pos,
-                        IsSelf = isSelf
+                        IsSelf = isSelf,
+                        Kills = kills,
+                        Deaths = deaths,
+                        Assists = assists,
+                        CreepScore = cs,
+                        Level = level,
+                        IsDead = isDead
                     });
                 }
 

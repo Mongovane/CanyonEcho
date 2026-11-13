@@ -36,6 +36,7 @@ namespace CanyonEcho_Wpf.Helper
         /// 根据官方 2999 接口或标签识别出的阵营（true=敌方所有人，false=本方队伍）
         /// </summary>
         public bool? IsEnemySpeaker { get; set; }
+        public LolPlayerInfo MatchedPlayer { get; set; }
     }
 
     /// <summary>
@@ -148,6 +149,7 @@ namespace CanyonEcho_Wpf.Helper
                 var matched = LiveClientDataService.MatchSpeakerFromRoster(result.Speaker, roster);
                 if (matched != null)
                 {
+                    result.MatchedPlayer = matched;
                     result.IsEnemySpeaker = !matched.IsTeammate && !matched.IsSelf;
                 }
             }

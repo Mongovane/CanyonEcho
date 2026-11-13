@@ -96,16 +96,20 @@ namespace CanyonEcho_Wpf.Helper
                 ? baseUrl
                 : $"{baseUrl}/chat/completions";
 
+            string statsInfo = parseResult?.MatchedPlayer != null
+                ? $"实时数据：[{parseResult.MatchedPlayer.FormatStatsSummary()}]；"
+                : "";
+
             string speakerContext = (parseResult != null && parseResult.IsAccompliceDefending)
-                ? $"【多人帮腔护短场景】主目标：{parseResult.LockedPrimaryTarget}，跳出来帮腔的人：{parseResult.AccompliceSpeaker}；基于你对他俩的一切了解一起喷，脏话拉满，别收着！"
+                ? $"【多人帮腔护短场景】主目标：{parseResult.LockedPrimaryTarget}，跳出来帮腔的人：{parseResult.AccompliceSpeaker}；{statsInfo}基于你对他俩的一切了解一起往死里喷，中文俚语+大量脏话拉满，别收着！"
                 : (!string.IsNullOrWhiteSpace(parseResult?.Speaker)
-                    ? $"发言人/英雄：{parseResult.Speaker}；意图分类：{parseResult.IntentCategory}；"
-                    : $"意图分类：{parseResult?.IntentCategory ?? "游戏嘲讽"}；");
+                    ? $"发言人/英雄：{parseResult.Speaker}；{statsInfo}意图分类：{parseResult.IntentCategory}；"
+                    : $"{statsInfo}意图分类：{parseResult?.IntentCategory ?? "游戏嘲讽"}；");
 
             // Roast 模式 (默认开): 基于你对发言人的一切了解往死里喷, 中文俚语+大量脏话,
             // 别收着。关掉 UseRoastMode 才回到干净阴阳怪气。
             string roastSuffix = config.UseRoastMode
-                ? "基于你对这个喷子的一切了解（英雄、意图、原话、战绩）往死里喷，别收着，用中文俚语加大量脏话，40字以内，只输出喷人的话本身："
+                ? "Based on everything you know about this player (英雄、KDA战绩、补刀、阵亡状态、意图、原话), roast and don't hold back. Say it in Chinese slang, add way more Chinese swear words (必须用隐形写法)，40字以内，只输出喷人的话本身："
                 : "请生成一句针对性的阴阳怪气反击（28字以内，不带脏字，只输出反击句子本身）：";
             string userPrompt = string.IsNullOrWhiteSpace(enemyText)
                 ? (config.UseRoastMode ? "对面在公屏发问号嘲讽我们，往死里喷他，别收着，脏话拉满。" : "对面在公屏发问号嘲讽我们，请给出一句高情商阴阳怪气反击。")

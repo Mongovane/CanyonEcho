@@ -184,7 +184,7 @@ checks = [
     ("fix/2999不再全局信任所有证书", "LiveClientDataService.cs", all("ServerCertificateValidationCallback +=" not in ln for ln in read("CanyonEcho_Wpf/Helper/LiveClientDataService.cs").splitlines() if not ln.strip().startswith("//"))),
     ("fix/更新不再用SKIP哨兵", "MainWindowViewModel.cs", '? "SKIP"' not in read("CanyonEcho_Wpf/ViewModels/MainWindowViewModel.cs") and '!= "SKIP"' not in read("CanyonEchoUpdate/Program.cs")),
     ("fix/更新走raw.githubusercontent", "Apis.cs", "raw.githubusercontent.com" in read("CanyonEcho_Wpf/Api/Apis.cs")),
-    ("fix/版本号统一4.3.0", "README", "# 峡谷回音 CanyonEcho v4.3.0" in read("README.md") and "v4.3.0 验证报告" in read("README.md")),
+    ("fix/版本号统一4.3.0", "README", "# 峡谷回音 CanyonEcho v4.4.0" in read("README.md") and "v4.3.0 验证报告" in read("README.md")),
 ]
 for name, _, cond in checks:
     check(name, cond)
@@ -197,7 +197,7 @@ for name, _, cond in checks:
 DISGUISED = ["艹", "尼玛", "尼麻", "特么", "特麻", "傻哔", "煞笔", "儍B", "傻笔", "菜B", "废勿",
              "衮", "辣鸡", "脑摊", "脑蚕", "制杖", "若智", "白吃", "牛福", "牛啵", "苟东西",
              "勾东西", "儿砸", "JL子", "蝶", "喋", "粑粑", "孙砸", "CNM", "NMSL", "傻砸",
-             "二哔", "装哔", "菜吉", "蔡吉", "衮蛋", "去似", "老冯", "乐色", "费物", "拉基"]
+             "二哔", "装哔", "菜吉", "蔡吉", "衮蛋", "去似", "老冯", "乐色", "费物", "拉基", "B崽子", "哔崽子", "苟篮子", "勾篮子", "王八旦", "忘八蛋", "脑一血", "初生", "畜牲", "孤J", "苟叫", "勾叫", "JB", "P话"]
 SWEARS = DISGUISED  # 兼容下面复用的变量名, 含义已改为隐形脏话
 aiconfig = read("CanyonEcho_Wpf/Helper/AiConfig.cs")
 aireply = read("CanyonEcho_Wpf/Helper/AiReplyService.cs")
@@ -275,7 +275,7 @@ def obfuscate_py(inp, zw=True):
         "叫蝶", "儿砸", "孙砸", "孝砸", "粑粑", "傻哔", "煞笔", "儍B", "傻笔", "傻砸", "傻叉",
         "二哔", "装哔", "牛福", "牛啵", "菜B", "菜吉", "蔡吉", "废勿", "费物", "脑摊", "脑蚕",
         "制杖", "若智", "白吃", "苟东西", "勾东西", "践人",
-        "下践", "表子", "衮蛋", "去似", "麻蛋", "马蛋", "辣鸡", "拉基", "乐色", "喋"]
+        "下践", "表子", "衮蛋", "去似", "麻蛋", "马蛋", "辣鸡", "拉基", "乐色", "喋", "B崽子", "哔崽子", "苟篮子", "勾篮子", "王八旦", "忘八蛋", "脑一血", "初生", "畜牲", "孤J", "苟叫", "勾叫", "JB", "P话"]
     out, i = [], 0
     while i < len(res):
         hit = None
@@ -320,7 +320,7 @@ check("obf/提示词含JL子", "JL子" in aiconfig and "儿砸" in aiconfig)
 check("obf/提示词含制杖牛福", "制杖" in aiconfig and "牛福" in aiconfig)
 # 模板总数 82, 每条仍含隐形脏话 (上面第 12 节已按 DISGUISED 检查, 这里只锁总数)
 _total = sum(len(_re.findall(r'"([^"]+)"', b)) for _, b in cats)
-check("obf/模板总数82条", _total == 82, f"{_total}条")
+check("obf/模板总数82条", _total == 92, f"{_total}条")
 check("obf/新模板含儿砸蝶制杖", any(w in builtin for w in ["儿砸", "JL子", "制杖", "牛福", "苟东西"]))
 
 
@@ -433,8 +433,8 @@ for _f in sorted((ROOT).rglob("*.cs")):
 # 行数不编译, 所以 179/179 和 215/215 都没发现。这是 v4.3.0 最要命的一处。
 check("v43/compile BuiltIn里没有,,", '",,' not in builtin)
 check("v43/compile 所有cs里都没有,,", all('",,"' not in _f.read_text(encoding="utf-8-sig") for _f in (ROOT).rglob("*.cs")), "8 处已修")
-check("v43/compile 模板总数还是82条", _total == 82, f"{_total}条")
-check("v43/compile 每类模板数不变", [len(_re.findall(r'"([^"]+)"', b)) for _, b in cats] == [12, 11, 13, 11, 8, 7, 9, 11])
+check("v43/compile 模板总数还是82条", _total == 92, f"{_total}条")
+check("v43/compile 每类模板数不变", [len(_re.findall(r'"([^"]+)"', b)) for _, b in cats] == [14, 12, 15, 12, 9, 8, 10, 12])
 
 # 15.2 Random 线程安全
 check("v43/rng 带锁的取数方法", "RngNext(int maxValue)" in builtin and "RngNextDouble()" in builtin)
@@ -513,11 +513,11 @@ check("v43/png 截图还在", (ROOT / "截图_游戏.jpg").exists() and (ROOT / 
 
 # 15.9 版本统一 4.3.0
 _ver = json.loads((ROOT / "version.json").read_text(encoding="utf-8-sig"))
-check("v43/ver version.json是4.3.0", _ver.get("VersionName") == "4.3.0")
-check("v43/ver 下载地址是v4.3.0", "v4.3.0" in _ver.get("Url", ""))
-check("v43/ver AssemblyInfo是4.3.0", 'AssemblyVersion("4.3.0.0")' in read("CanyonEcho_Wpf/Properties/AssemblyInfo.cs"))
-check("v43/ver bat是4.3.0", "v4.3.0" in read("一键编译生成EXE.bat"))
-check("v43/ver README标题是4.3.0", "# 峡谷回音 CanyonEcho v4.3.0" in read("README.md"))
+check("v43/ver version.json是4.3.0", _ver.get("VersionName") == "4.4.0")
+check("v43/ver 下载地址是v4.4.0", "v4.4.0" in _ver.get("Url", ""))
+check("v43/ver AssemblyInfo是4.3.0", 'AssemblyVersion("4.4.0.0")' in read("CanyonEcho_Wpf/Properties/AssemblyInfo.cs"))
+check("v43/ver bat是4.3.0", "v4.4.0" in read("一键编译生成EXE.bat"))
+check("v43/ver README标题是4.3.0", "# 峡谷回音 CanyonEcho v4.4.0" in read("README.md"))
 
 
 # ---------- 16. v4.3.0 脏话升级: 烧掉的词 + 变体轮换 + 零宽轮换 + 降密度 ----------
@@ -535,7 +535,7 @@ _roast_lines = [ln for _, b in cats for ln in _re.findall(r'"([^"]+)"', b)]
 check("v43swear/模板里没有傻B", not any("傻B" in ln for ln in _roast_lines))
 check("v43swear/模板里没有SB/TMD/卧艹/卧槽/去屎", not any(_re.search(r"\bSB\b|TMD|卧艹|卧槽|去屎", ln) for ln in _roast_lines))
 check("v43swear/模板里有新写法傻哔煞笔儍B", any("傻哔" in ln for ln in _roast_lines) and any("煞笔" in ln for ln in _roast_lines) and any("儍B" in ln for ln in _roast_lines))
-check("v43swear/模板还是82条", len(_roast_lines) == 82, f"{len(_roast_lines)}条")
+check("v43swear/模板还是82条", len(_roast_lines) == 92, f"{len(_roast_lines)}条")
 # 每条最多 2 个不同脏话词 (最长匹配, 衮蛋/尼玛B 这类不重复计)
 _SWEAR_TOKENS = sorted(["艹尼玛", "尼玛B", "特么的", "艹", "尼玛", "尼麻", "特么", "特麻", "傻哔", "煞笔", "儍B", "傻笔", "菜B", "废勿", "费物", "衮蛋", "衮", "辣鸡", "拉基", "乐色", "脑摊", "脑蚕", "制杖", "若智", "白吃", "牛福", "牛啵", "苟东西", "勾东西", "儿砸", "JL子", "蝶", "喋", "粑粑", "孙砸", "龟孙砸", "孝砸", "菜吉", "蔡吉"], key=len, reverse=True)
 def _swear_distinct(line):
@@ -596,6 +596,13 @@ check("v43zuan/加载器防重复15条", "_recent" in _zcs and "Count > 15" in _
 check("v43zuan/加载失败不崩", "加载失败" in _zcs and "return null" in _zcs)
 check("v43zuan/引擎25%概率用外站词库", "RngNextDouble() < 0.25" in builtin and "ZuanbotLibrary.GetRandomLine()" in builtin)
 
+
+
+# v4.4.0: 实时 KDA 上下文注入 + 新俚语脏话映射 + LRU 防重
+check("v44/LiveClientData采集KDA", "FormatStatsSummary" in read("CanyonEcho_Wpf/Helper/LiveClientDataService.cs"))
+check("v44/AiReply注入实时战绩", "FormatStatsSummary" in aireply)
+check("v44/SwearObfuscator含B崽子", "B崽子" in read("CanyonEcho_Wpf/Helper/SwearObfuscator.cs"))
+check("v44/BuiltIn含LRU防重", "PickNonRepeating" in builtin)
 
 print(f"\n通过 {len(PASS)} / 失败 {len(FAIL)}")
 if FAIL:
